@@ -1,0 +1,20 @@
+# rag-core (shared package)
+-e packages/rag-core
+
+# Core dependencies (via rag-core)
+openai>=1.0.0
+neo4j>=5.0.0
+graphiti-core>=0.26.0
+pydantic>=2.0.0
+pydantic-settings>=2.0.0
+docling>=2.0.0
+numpy>=1.26.0
+
+# New for Agentic Graph RAG
+networkx>=3.0
+streamlit>=1.30.0
+
+# Dev
+pytest>=7.0.0
+pytest-asyncio>=0.21.0
+ruff>=0.1.0

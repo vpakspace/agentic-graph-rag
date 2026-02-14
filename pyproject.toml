@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "agentic-graph-rag"
+version = "0.1.0"
+description = "Agentic Graph RAG — Skeleton Indexing + VectorCypher + Agentic Router + Optimization"
+requires-python = ">=3.12"
+dependencies = [
+    "rag-core",
+    "networkx>=3.0",
+    "streamlit>=1.30.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "ruff>=0.1.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["agentic_graph_rag*", "ui*", "benchmark*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests", "packages/rag-core/tests"]
+asyncio_mode = "auto"
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "W"]
