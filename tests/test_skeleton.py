@@ -4,8 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import networkx as nx
 import numpy as np
-
-from rag_core.models import Chunk, Entity, Relationship
+from rag_core.models import Chunk, Entity
 
 from agentic_graph_rag.indexing.skeleton import (
     _parse_extraction_response,

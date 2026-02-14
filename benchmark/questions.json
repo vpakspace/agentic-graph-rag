@@ -1,0 +1,107 @@
+[
+  {
+    "id": 1,
+    "question": "What is LMCache?",
+    "question_ru": "Что такое LMCache?",
+    "type": "simple",
+    "keywords": ["LMCache", "cache", "system"]
+  },
+  {
+    "id": 2,
+    "question": "How does KV cache compression work?",
+    "question_ru": "Как работает сжатие KV-кеша?",
+    "type": "simple",
+    "keywords": ["KV cache", "compression"]
+  },
+  {
+    "id": 3,
+    "question": "What is the relationship between LMCache and vLLM?",
+    "question_ru": "Какая связь между LMCache и vLLM?",
+    "type": "relation",
+    "keywords": ["LMCache", "vLLM", "integration"]
+  },
+  {
+    "id": 4,
+    "question": "How are CacheGen and LMCache related?",
+    "question_ru": "Как связаны CacheGen и LMCache?",
+    "type": "relation",
+    "keywords": ["CacheGen", "LMCache"]
+  },
+  {
+    "id": 5,
+    "question": "How does the token selection strategy affect cache eviction?",
+    "question_ru": "Как стратегия выбора токенов влияет на вытеснение кеша?",
+    "type": "multi_hop",
+    "keywords": ["token selection", "cache eviction", "strategy"]
+  },
+  {
+    "id": 6,
+    "question": "What is the chain from user query to cached response?",
+    "question_ru": "Какая цепочка от запроса пользователя до кешированного ответа?",
+    "type": "multi_hop",
+    "keywords": ["query", "response", "chain", "pipeline"]
+  },
+  {
+    "id": 7,
+    "question": "Compare prefix caching and full KV caching approaches",
+    "question_ru": "Сравни подходы prefix caching и full KV caching",
+    "type": "multi_hop",
+    "keywords": ["prefix caching", "full KV caching", "comparison"]
+  },
+  {
+    "id": 8,
+    "question": "List all components of the LMCache architecture",
+    "question_ru": "Перечисли все компоненты архитектуры LMCache",
+    "type": "global",
+    "keywords": ["components", "architecture", "all"]
+  },
+  {
+    "id": 9,
+    "question": "Give an overview of cache storage backends",
+    "question_ru": "Дай обзор бэкендов хранения кеша",
+    "type": "global",
+    "keywords": ["storage", "backends", "overview"]
+  },
+  {
+    "id": 10,
+    "question": "Summarize all evaluation metrics used in the paper",
+    "question_ru": "Резюмируй все метрики оценки, используемые в статье",
+    "type": "global",
+    "keywords": ["metrics", "evaluation", "summary"]
+  },
+  {
+    "id": 11,
+    "question": "When was LMCache first released?",
+    "question_ru": "Когда был впервые выпущен LMCache?",
+    "type": "temporal",
+    "keywords": ["release", "date", "first"]
+  },
+  {
+    "id": 12,
+    "question": "What changes occurred between CacheGen v1 and v2?",
+    "question_ru": "Какие изменения произошли между CacheGen v1 и v2?",
+    "type": "temporal",
+    "keywords": ["changes", "version", "history"]
+  },
+  {
+    "id": 13,
+    "question": "What performance improvements were achieved over time?",
+    "question_ru": "Какие улучшения производительности были достигнуты со временем?",
+    "type": "temporal",
+    "keywords": ["performance", "improvements", "timeline"]
+  },
+  {
+    "id": 14,
+    "question": "How does the blending engine combine local and remote cache?",
+    "question_ru": "Как движок объединяет локальный и удалённый кеш?",
+    "type": "relation",
+    "keywords": ["blending", "local", "remote", "cache"]
+  },
+  {
+    "id": 15,
+    "question": "What role does GPU memory play in the caching pipeline?",
+    "question_ru": "Какую роль играет GPU память в пайплайне кеширования?",
+    "type": "simple",
+    "keywords": ["GPU", "memory", "pipeline"]
+  }
+]

@@ -1,14 +1,11 @@
 """Tests for agentic_graph_rag.indexing.dual_node."""
 
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import networkx as nx
-
 from rag_core.models import Chunk, Entity, PassageNode, PhraseNode
 
 from agentic_graph_rag.indexing.dual_node import (
-    PASSAGE_LABEL,
-    PHRASE_LABEL,
     build_dual_graph,
     compute_ppr,
     create_passage_nodes,

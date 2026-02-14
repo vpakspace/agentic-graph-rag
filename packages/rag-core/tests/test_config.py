@@ -1,8 +1,6 @@
 """Tests for rag_core.config."""
 
-import os
 
-import pytest
 
 from rag_core.config import (
     AgentSettings,

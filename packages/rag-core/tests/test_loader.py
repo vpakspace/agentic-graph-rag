@@ -1,7 +1,6 @@
 """Tests for rag_core.loader."""
 
 import pytest
-
 from rag_core.loader import SUPPORTED_EXTENSIONS, DoclingLoader, DocumentResult, load_file
 
 

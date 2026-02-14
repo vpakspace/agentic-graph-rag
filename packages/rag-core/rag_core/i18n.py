@@ -89,11 +89,34 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
         "ru": "Уверенность роутера: {conf:.0%}",
     },
 
-    # Graph tab
-    "graph_header": {"en": "Knowledge Graph", "ru": "Граф знаний"},
+    # Tabs (extended)
+    "tab_agent_trace": {"en": "Agent Trace", "ru": "Трассировка"},
+    "tab_graph_explorer": {"en": "Graph Explorer", "ru": "Граф"},
+
+    # Graph Explorer tab
+    "graph_header": {"en": "Graph Explorer", "ru": "Исследователь графа"},
     "graph_entities": {"en": "Entities ({count})", "ru": "Сущности ({count})"},
     "graph_relationships": {"en": "Relationships ({count})", "ru": "Связи ({count})"},
     "graph_temporal": {"en": "Temporal Facts", "ru": "Временные факты"},
+    "graph_phrase_nodes": {"en": "Phrase Nodes", "ru": "Узлы-фразы"},
+    "graph_passage_nodes": {"en": "Passage Nodes", "ru": "Узлы-пассажи"},
+    "graph_no_data": {"en": "No graph data. Ingest documents first.", "ru": "Нет данных. Сначала загрузите документы."},
+    "graph_max_nodes": {"en": "Max nodes to display", "ru": "Макс. узлов для отображения"},
+
+    # Agent Trace tab
+    "trace_header": {"en": "Agent Trace", "ru": "Трассировка агента"},
+    "trace_no_data": {
+        "en": "Run a query in Search tab to see the trace.",
+        "ru": "Выполните запрос во вкладке Поиск, чтобы увидеть трассировку.",
+    },
+    "trace_routing": {"en": "Routing Decision", "ru": "Решение роутера"},
+    "trace_query_type": {"en": "Query Type", "ru": "Тип запроса"},
+    "trace_confidence": {"en": "Confidence", "ru": "Уверенность"},
+    "trace_reasoning": {"en": "Reasoning", "ru": "Обоснование"},
+    "trace_tool": {"en": "Selected Tool", "ru": "Выбранный инструмент"},
+    "trace_correction": {"en": "Self-Correction Steps", "ru": "Шаги самокоррекции"},
+    "trace_retries": {"en": "Retries: {count}", "ru": "Повторов: {count}"},
+    "trace_tool_calls": {"en": "Tool Calls", "ru": "Вызовы инструментов"},
 
     # Benchmark tab
     "bench_header": {"en": "Benchmark Evaluation", "ru": "Оценка качества"},
@@ -128,6 +151,14 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "settings_clear_confirm": {"en": "Type DELETE to confirm", "ru": "Введите DELETE для подтверждения"},
     "settings_clear_button": {"en": "Clear All Data", "ru": "Удалить все данные"},
     "settings_cleared": {"en": "Deleted {count} chunks", "ru": "Удалено {count} чанков"},
+
+    # Settings — cache stats
+    "settings_cache_header": {"en": "Cache Statistics", "ru": "Статистика кеша"},
+    "settings_cache_size": {"en": "Entries: {size}/{max_size}", "ru": "Записей: {size}/{max_size}"},
+    "settings_cache_hit_rate": {"en": "Hit rate: {rate:.0%}", "ru": "Попадания: {rate:.0%}"},
+    "settings_monitor_header": {"en": "Query Monitor", "ru": "Монитор запросов"},
+    "settings_monitor_total": {"en": "Total queries: {count}", "ru": "Всего запросов: {count}"},
+    "settings_suggestions": {"en": "Tuning Suggestions", "ru": "Рекомендации по настройке"},
 
     # Common
     "error": {"en": "Error: {msg}", "ru": "Ошибка: {msg}"},

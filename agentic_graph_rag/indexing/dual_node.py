@@ -15,7 +15,6 @@ import logging
 from typing import TYPE_CHECKING
 
 import networkx as nx
-
 from rag_core.config import get_settings
 from rag_core.models import Chunk, Entity, PassageNode, PhraseNode
 

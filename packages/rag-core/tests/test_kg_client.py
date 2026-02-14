@@ -1,7 +1,6 @@
 """Tests for rag_core.kg_client."""
 
 import pytest
-
 from rag_core.kg_client import (
     DEFAULT_MAX_EPISODE_CHARS,
     KGClient,

@@ -1,7 +1,6 @@
 """Tests for agentic_graph_rag.optimization.cache."""
 
 import time
-from unittest.mock import patch
 
 from rag_core.models import GraphContext
 
@@ -10,7 +9,6 @@ from agentic_graph_rag.optimization.cache import (
     SubgraphCache,
     cache_key,
 )
-
 
 # ---------------------------------------------------------------------------
 # cache_key

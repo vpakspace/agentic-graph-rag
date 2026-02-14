@@ -1,6 +1,5 @@
 """Tests for rag_core.models."""
 
-import pytest
 
 from rag_core.models import (
     Chunk,

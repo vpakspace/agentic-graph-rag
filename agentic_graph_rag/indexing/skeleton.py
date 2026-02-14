@@ -16,7 +16,6 @@ from typing import TYPE_CHECKING
 
 import networkx as nx
 import numpy as np
-
 from rag_core.config import get_settings
 from rag_core.models import Chunk, Entity, Relationship
 

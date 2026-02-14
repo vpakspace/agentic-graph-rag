@@ -3,7 +3,6 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-
 from rag_core.embedder import embed_chunks
 from rag_core.models import Chunk
 

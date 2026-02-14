@@ -13,8 +13,8 @@ from rag_core.config import get_settings
 from rag_core.models import Chunk, GraphContext, SearchResult
 
 if TYPE_CHECKING:
-    from openai import OpenAI
     from neo4j import Driver
+    from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 

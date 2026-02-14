@@ -10,7 +10,6 @@ from agentic_graph_rag.agent.router import (
     classify_query_by_patterns,
 )
 
-
 # ---------------------------------------------------------------------------
 # classify_query_by_patterns
 # ---------------------------------------------------------------------------

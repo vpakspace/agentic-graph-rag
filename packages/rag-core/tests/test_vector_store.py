@@ -2,8 +2,6 @@
 
 from unittest.mock import MagicMock, patch
 
-import pytest
-
 from rag_core.models import Chunk
 from rag_core.vector_store import INDEX_NAME, NODE_LABEL, VectorStore
 

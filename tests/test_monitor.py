@@ -4,7 +4,6 @@ import time
 
 from agentic_graph_rag.optimization.monitor import QueryMonitor
 
-
 # ---------------------------------------------------------------------------
 # record_query + get_stats
 # ---------------------------------------------------------------------------
@@ -59,7 +58,7 @@ class TestRecordQuery:
 class TestTrack:
     def test_auto_records(self):
         m = QueryMonitor()
-        with m.track("simple", "vector_search") as ctx:
+        with m.track("simple", "vector_search"):
             time.sleep(0.01)
 
         s = m.get_stats()
