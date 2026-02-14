@@ -26,7 +26,7 @@ jobs:
           python -m pip install --upgrade pip
           pip install -e packages/rag-core --no-deps
           pip install pydantic pydantic-settings networkx numpy openai scipy
-          pip install pytest ruff
+          pip install pytest pytest-asyncio ruff
 
       - name: Lint with ruff
         run: ruff check --target-version py312 .
