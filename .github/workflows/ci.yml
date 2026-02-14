@@ -33,3 +33,5 @@ jobs:
 
       - name: Run tests
         run: pytest tests/ packages/rag-core/tests/ -x -q
+        env:
+          PYTHONPATH: .
