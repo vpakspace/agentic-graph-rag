@@ -25,7 +25,7 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e packages/rag-core --no-deps
-          pip install pydantic pydantic-settings networkx numpy openai
+          pip install pydantic pydantic-settings networkx numpy openai scipy
           pip install pytest ruff
 
       - name: Lint with ruff
