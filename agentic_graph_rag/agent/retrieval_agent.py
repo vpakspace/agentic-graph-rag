@@ -29,6 +29,8 @@ if TYPE_CHECKING:
     from neo4j import Driver
     from openai import OpenAI
 
+    from agentic_graph_rag.reasoning.reasoning_engine import ReasoningEngine
+
 logger = logging.getLogger(__name__)
 
 # Tool registry: query_type → tool function
@@ -145,6 +147,7 @@ def run(
     driver: Driver,
     openai_client: OpenAI | None = None,
     use_llm_router: bool = False,
+    reasoning: ReasoningEngine | None = None,
 ) -> QAResult:
     """Run the agentic retrieval pipeline.
 
@@ -161,7 +164,7 @@ def run(
         openai_client = OpenAI(api_key=cfg.openai.api_key)
 
     # Step 1: Classify query
-    decision = classify_query(query, use_llm=use_llm_router, openai_client=openai_client)
+    decision = classify_query(query, use_llm=use_llm_router, openai_client=openai_client, reasoning=reasoning)
     logger.info(
         "Query classified: type=%s, tool=%s, confidence=%.2f",
         decision.query_type.value, decision.suggested_tool, decision.confidence,

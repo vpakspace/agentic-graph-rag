@@ -16,6 +16,8 @@ from rag_core.models import QueryType, RouterDecision
 if TYPE_CHECKING:
     from openai import OpenAI
 
+    from agentic_graph_rag.reasoning.reasoning_engine import ReasoningEngine
+
 logger = logging.getLogger(__name__)
 
 # ---------------------------------------------------------------------------
@@ -158,6 +160,35 @@ def classify_query_by_llm(
 
 
 # ---------------------------------------------------------------------------
+# Mangle-based classification
+# ---------------------------------------------------------------------------
+
+_MANGLE_TOOL_TO_TYPE: dict[str, QueryType] = {
+    "vector_search": QueryType.SIMPLE,
+    "cypher_traverse": QueryType.RELATION,
+    "full_document_read": QueryType.GLOBAL,
+    "temporal_query": QueryType.TEMPORAL,
+}
+
+
+def _classify_by_mangle(query: str, reasoning: ReasoningEngine) -> RouterDecision | None:
+    """Attempt classification via Mangle rules. Returns None if no match."""
+    result = reasoning.classify_query(query)
+    if result is None:
+        return None
+
+    tool = result["tool"]
+    query_type = _MANGLE_TOOL_TO_TYPE.get(tool, QueryType.SIMPLE)
+
+    return RouterDecision(
+        query_type=query_type,
+        confidence=0.7,
+        reasoning=f"Mangle rule matched → {tool}.",
+        suggested_tool=tool,
+    )
+
+
+# ---------------------------------------------------------------------------
 # Main entry point
 # ---------------------------------------------------------------------------
 
@@ -165,12 +196,19 @@ def classify_query(
     query: str,
     use_llm: bool = False,
     openai_client: OpenAI | None = None,
+    reasoning: ReasoningEngine | None = None,
 ) -> RouterDecision:
     """Classify query and suggest retrieval tool.
 
-    Uses pattern matching by default (fast). Set use_llm=True for
-    higher accuracy at the cost of an API call.
+    When a ReasoningEngine is provided, Mangle rules are tried first.
+    Falls back to patterns (or LLM) if Mangle produces no match.
     """
+    if reasoning is not None:
+        mangle_result = _classify_by_mangle(query, reasoning)
+        if mangle_result is not None:
+            return mangle_result
+        logger.debug("Mangle produced no match for query, falling back to patterns")
+
     if use_llm:
         return classify_query_by_llm(query, openai_client=openai_client)
     return classify_query_by_patterns(query)
