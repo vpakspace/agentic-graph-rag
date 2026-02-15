@@ -18,9 +18,11 @@ from pymangle.ast_nodes import (
 
 __version__ = "0.1.0"
 
+from pymangle.engine import FactLimitError, eval_program
 from pymangle.parser import ParseError, load, parse
 
 __all__ = [
+    "FactLimitError",
     "Atom",
     "Clause",
     "Comparison",
@@ -34,6 +36,7 @@ __all__ = [
     "TemporalAtom",
     "Transform",
     "Variable",
+    "eval_program",
     "load",
     "parse",
 ]
