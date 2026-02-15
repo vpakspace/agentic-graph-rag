@@ -1,0 +1,78 @@
+// Mangle/Datalog grammar for Lark parser
+
+start: statement*
+
+statement: clause | fact | decl
+
+// Declarations
+decl: "Decl" PREDICATE "(" decl_args ")" descriptor* bound* "."
+decl_args: VARIABLE ("," VARIABLE)*
+descriptor: DESCRIPTOR
+DESCRIPTOR: "external" | "temporal" | "deferred"
+bound: "bound" "[" type_list "]"
+type_list: type_expr ("," type_expr)*
+type_expr: NAME_CONST | "/" IDENT
+
+// Facts (rules with empty body) + optional temporal
+fact: atom temporal_annot? "."
+
+// Rules
+clause: atom temporal_annot? ":-" body "."
+body: premise ("," premise)* agg_transform?
+
+// Premises
+premise: neg_atom | comparison | temporal_atom | atom
+neg_atom: "!" atom
+temporal_atom: atom temporal_annot
+comparison: term COMP_OP term
+COMP_OP: "==" | "!=" | "<=" | ">=" | "<" | ">" | "="
+
+// Temporal annotation
+temporal_annot: "@" "[" time_expr "," time_expr "]"
+time_expr: term | "_" | ISO_DATE | ISO_DATETIME
+
+// Atoms
+atom: PREDICATE "(" args? ")"
+     | BUILTIN_PRED "(" args? ")"
+args: term ("," term)*
+
+// Transform (aggregation pipeline)
+agg_transform: "|>" do_clause? let_clause
+do_clause: "do" funcall ","
+let_clause: "let" VARIABLE "=" funcall
+
+// Terms
+?term: funcall
+     | list_term
+     | map_term
+     | struct_term
+     | variable
+     | constant
+
+variable: VARIABLE
+constant: STRING | NUMBER | FLOAT | NAME_CONST
+
+funcall: FN_NAME "(" args? ")"
+list_term: "fn:list" "(" args? ")"
+map_term: "fn:map" "(" args? ")"
+struct_term: "fn:struct" "(" args? ")"
+
+// Terminals
+PREDICATE: /[a-z_][a-z0-9_]*/
+BUILTIN_PRED: /:[a-z_]+(?::[a-z_]+)*/
+VARIABLE: /[A-Z_][A-Za-z0-9_]*/
+FN_NAME: /fn:[a-z_]+(?::[a-z_]+)*/
+NAME_CONST: "/" IDENT
+IDENT: /[a-z_][a-z0-9_]*/
+STRING: /\"[^\"]*\"/
+NUMBER: /\-?[0-9]+/
+FLOAT: /\-?[0-9]+\.[0-9]+/
+ISO_DATE: /\d{4}-\d{2}-\d{2}/
+ISO_DATETIME: /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/
+
+%import common.WS
+%import common.SH_COMMENT
+%ignore WS
+%ignore SH_COMMENT
+// Also ignore Mangle-style comments
+%ignore /%.*/
