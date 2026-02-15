@@ -38,13 +38,19 @@ def eval_program(
     Returns the fact store containing all derived facts.
     """
     from pymangle.analysis import stratify
+    from pymangle.types import TypeChecker
 
     if store is None:
         store = IndexedFactStore()
 
+    # Set up type checker if declarations exist
+    checker = TypeChecker(program.decls) if program.decls else None
+
     # Load initial facts
     for fact_clause in program.facts:
         store.add(fact_clause.head)
+        if checker is not None:
+            checker.check_bounds(fact_clause.head)
 
     if not program.clauses:
         return store
