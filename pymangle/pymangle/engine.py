@@ -30,10 +30,12 @@ def eval_program(
     store: IndexedFactStore | None = None,
     fact_limit: int = 100_000,
 ) -> IndexedFactStore:
-    """Evaluate a Mangle program using semi-naive bottom-up evaluation.
+    """Evaluate a Mangle program using stratified semi-naive bottom-up evaluation.
 
     Returns the fact store containing all derived facts.
     """
+    from pymangle.analysis import stratify
+
     if store is None:
         store = IndexedFactStore()
 
@@ -41,46 +43,56 @@ def eval_program(
     for fact_clause in program.facts:
         store.add(fact_clause.head)
 
-    # Group rules by head predicate
-    rules_by_pred: dict[str, list[Clause]] = defaultdict(list)
-    for clause in program.clauses:
-        rules_by_pred[clause.head.predicate].append(clause)
-
-    if not rules_by_pred:
+    if not program.clauses:
         return store
 
+    # Stratify and evaluate each stratum to fixpoint
+    strata = stratify(program)
+    total_derived = 0
+
+    for stratum in strata:
+        if not stratum.rules:
+            continue
+        total_derived += _eval_stratum(stratum.rules, store, fact_limit - total_derived)
+
+    logger.info("Evaluation complete: %d facts derived", total_derived)
+    return store
+
+
+def _eval_stratum(
+    rules: list[Clause],
+    store: IndexedFactStore,
+    fact_limit: int,
+) -> int:
+    """Evaluate a single stratum to fixpoint. Returns count of new facts."""
     total_derived = 0
 
     # Initial round: apply all rules
     delta = IndexedFactStore()
-    for rules in rules_by_pred.values():
-        for rule in rules:
-            for fact in _eval_rule(rule, store, store):
-                if store.add(fact):
-                    delta.add(fact)
-                    total_derived += 1
-                    if total_derived > fact_limit:
-                        raise FactLimitError(f"Exceeded fact limit of {fact_limit}")
+    for rule in rules:
+        for fact in _eval_rule(rule, store, store):
+            if store.add(fact):
+                delta.add(fact)
+                total_derived += 1
+                if total_derived > fact_limit:
+                    raise FactLimitError(f"Exceeded fact limit of {fact_limit}")
 
     # Delta iteration
     while len(delta) > 0:
         new_delta = IndexedFactStore()
-        for rules in rules_by_pred.values():
-            for rule in rules:
-                # For each positive premise, create a delta variant
-                for i, premise in enumerate(rule.premises):
-                    if isinstance(premise, (NegAtom, Comparison)):
-                        continue
-                    for fact in _eval_rule_delta(rule, i, store, delta):
-                        if store.add(fact):
-                            new_delta.add(fact)
-                            total_derived += 1
-                            if total_derived > fact_limit:
-                                raise FactLimitError(f"Exceeded fact limit of {fact_limit}")
+        for rule in rules:
+            for i, premise in enumerate(rule.premises):
+                if isinstance(premise, (NegAtom, Comparison)):
+                    continue
+                for fact in _eval_rule_delta(rule, i, store, delta):
+                    if store.add(fact):
+                        new_delta.add(fact)
+                        total_derived += 1
+                        if total_derived > fact_limit:
+                            raise FactLimitError(f"Exceeded fact limit of {fact_limit}")
         delta = new_delta
 
-    logger.info("Evaluation complete: %d facts derived", total_derived)
-    return store
+    return total_derived
 
 
 def _eval_rule(
