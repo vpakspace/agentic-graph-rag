@@ -32,6 +32,7 @@ def eval_program(
     program: Program,
     store: IndexedFactStore | None = None,
     fact_limit: int = 100_000,
+    externals: object | None = None,
 ) -> IndexedFactStore:
     """Evaluate a Mangle program using stratified semi-naive bottom-up evaluation.
 
@@ -62,7 +63,7 @@ def eval_program(
     for stratum in strata:
         if not stratum.rules:
             continue
-        total_derived += _eval_stratum(stratum.rules, store, fact_limit - total_derived)
+        total_derived += _eval_stratum(stratum.rules, store, fact_limit - total_derived, externals)
 
     logger.info("Evaluation complete: %d facts derived", total_derived)
     return store
@@ -72,6 +73,7 @@ def _eval_stratum(
     rules: list[Clause],
     store: IndexedFactStore,
     fact_limit: int,
+    externals: object | None = None,
 ) -> int:
     """Evaluate a single stratum to fixpoint. Returns count of new facts."""
     total_derived = 0
@@ -83,7 +85,7 @@ def _eval_stratum(
     # Initial round: apply plain rules
     delta = IndexedFactStore()
     for rule in plain_rules:
-        for fact in _eval_rule(rule, store, store):
+        for fact in _eval_rule(rule, store, store, externals):
             if store.add(fact):
                 delta.add(fact)
                 total_derived += 1
@@ -97,7 +99,7 @@ def _eval_stratum(
             for i, premise in enumerate(rule.premises):
                 if isinstance(premise, (NegAtom, Comparison)):
                     continue
-                for fact in _eval_rule_delta(rule, i, store, delta):
+                for fact in _eval_rule_delta(rule, i, store, delta, externals):
                     if store.add(fact):
                         new_delta.add(fact)
                         total_derived += 1
@@ -215,10 +217,11 @@ def _eval_rule(
     rule: Clause,
     store: IndexedFactStore,
     search_store: IndexedFactStore,
+    externals: object | None = None,
 ) -> list[Atom]:
     """Evaluate a single rule against the store."""
     results = []
-    for subst in _solve_premises(rule.premises, 0, {}, store, search_store):
+    for subst in _solve_premises(rule.premises, 0, {}, store, search_store, externals):
         head = apply_subst(rule.head, subst)
         if isinstance(head, Atom) and is_ground(head):
             results.append(head)
@@ -230,10 +233,11 @@ def _eval_rule_delta(
     delta_idx: int,
     store: IndexedFactStore,
     delta: IndexedFactStore,
+    externals: object | None = None,
 ) -> list[Atom]:
     """Evaluate rule with i-th premise using delta store."""
     results = []
-    for subst in _solve_premises_delta(rule.premises, 0, delta_idx, {}, store, delta):
+    for subst in _solve_premises_delta(rule.premises, 0, delta_idx, {}, store, delta, externals):
         head = apply_subst(rule.head, subst)
         if isinstance(head, Atom) and is_ground(head):
             results.append(head)
@@ -246,6 +250,7 @@ def _solve_premises(
     subst: dict[str, object],
     store: IndexedFactStore,
     search_store: IndexedFactStore,
+    externals: object | None = None,
 ) -> list[dict]:
     """Recursively solve premises left-to-right."""
     if idx >= len(premises):
@@ -256,16 +261,21 @@ def _solve_premises(
 
     if isinstance(premise, Atom):
         pattern = apply_subst(premise, subst)
-        for fact in search_store.query(pattern):
+        candidates = list(search_store.query(pattern))
+        # External predicate fallback
+        if not candidates and externals is not None and hasattr(externals, "has") and externals.has(pattern.predicate):
+            inputs = [a for a in pattern.args if isinstance(a, Constant)]
+            candidates = externals.query_as_atoms(pattern.predicate, inputs, [])
+        for fact in candidates:
             new_subst = unify(pattern, fact, subst)
             if new_subst is not None:
-                results.extend(_solve_premises(premises, idx + 1, new_subst, store, search_store))
+                results.extend(_solve_premises(premises, idx + 1, new_subst, store, search_store, externals))
 
     elif isinstance(premise, NegAtom):
         pattern = apply_subst(premise.atom, subst)
         matches = store.query(pattern)
         if not matches:
-            results.extend(_solve_premises(premises, idx + 1, subst, store, search_store))
+            results.extend(_solve_premises(premises, idx + 1, subst, store, search_store, externals))
 
     elif isinstance(premise, Comparison):
         left = apply_subst(premise.left, subst)
@@ -280,14 +290,14 @@ def _solve_premises(
                 if val is not None:
                     new_subst = dict(subst)
                     new_subst[left.name] = val
-                    results.extend(_solve_premises(premises, idx + 1, new_subst, store, search_store))
+                    results.extend(_solve_premises(premises, idx + 1, new_subst, store, search_store, externals))
             else:
                 new_subst = dict(subst)
                 new_subst[left.name] = right
-                results.extend(_solve_premises(premises, idx + 1, new_subst, store, search_store))
+                results.extend(_solve_premises(premises, idx + 1, new_subst, store, search_store, externals))
         elif is_ground(left) and is_ground(right):
             if _eval_comparison(left, right, premise.op):
-                results.extend(_solve_premises(premises, idx + 1, subst, store, search_store))
+                results.extend(_solve_premises(premises, idx + 1, subst, store, search_store, externals))
 
     return results
 
@@ -299,6 +309,7 @@ def _solve_premises_delta(
     subst: dict[str, object],
     store: IndexedFactStore,
     delta: IndexedFactStore,
+    externals: object | None = None,
 ) -> list[dict]:
     """Solve premises with delta_idx-th premise using delta store."""
     if idx >= len(premises):
@@ -311,16 +322,21 @@ def _solve_premises_delta(
         pattern = apply_subst(premise, subst)
         # Use delta store for the delta premise, full store for others
         use_store = delta if idx == delta_idx else store
-        for fact in use_store.query(pattern):
+        candidates = list(use_store.query(pattern))
+        # External predicate fallback (only for non-delta premises)
+        if not candidates and idx != delta_idx and externals is not None and hasattr(externals, "has") and externals.has(pattern.predicate):
+            inputs = [a for a in pattern.args if isinstance(a, Constant)]
+            candidates = externals.query_as_atoms(pattern.predicate, inputs, [])
+        for fact in candidates:
             new_subst = unify(pattern, fact, subst)
             if new_subst is not None:
-                results.extend(_solve_premises_delta(premises, idx + 1, delta_idx, new_subst, store, delta))
+                results.extend(_solve_premises_delta(premises, idx + 1, delta_idx, new_subst, store, delta, externals))
 
     elif isinstance(premise, NegAtom):
         pattern = apply_subst(premise.atom, subst)
         matches = store.query(pattern)
         if not matches:
-            results.extend(_solve_premises_delta(premises, idx + 1, delta_idx, subst, store, delta))
+            results.extend(_solve_premises_delta(premises, idx + 1, delta_idx, subst, store, delta, externals))
 
     elif isinstance(premise, Comparison):
         left = apply_subst(premise.left, subst)
@@ -333,14 +349,14 @@ def _solve_premises_delta(
                 if val is not None:
                     new_subst = dict(subst)
                     new_subst[left.name] = val
-                    results.extend(_solve_premises_delta(premises, idx + 1, delta_idx, new_subst, store, delta))
+                    results.extend(_solve_premises_delta(premises, idx + 1, delta_idx, new_subst, store, delta, externals))
             else:
                 new_subst = dict(subst)
                 new_subst[left.name] = right
-                results.extend(_solve_premises_delta(premises, idx + 1, delta_idx, new_subst, store, delta))
+                results.extend(_solve_premises_delta(premises, idx + 1, delta_idx, new_subst, store, delta, externals))
         elif is_ground(left) and is_ground(right):
             if _eval_comparison(left, right, premise.op):
-                results.extend(_solve_premises_delta(premises, idx + 1, delta_idx, subst, store, delta))
+                results.extend(_solve_premises_delta(premises, idx + 1, delta_idx, subst, store, delta, externals))
 
     return results
 
