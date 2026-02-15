@@ -124,12 +124,25 @@ def _run_agent_llm(
     return run(query, driver, openai_client=client, use_llm_router=True)
 
 
+def _run_agent_mangle(
+    query: str, driver: Any, client: OpenAI,
+) -> QAResult:
+    """Agent with Mangle-based router (declarative rules)."""
+    from agentic_graph_rag.agent.retrieval_agent import run
+    from agentic_graph_rag.reasoning.reasoning_engine import ReasoningEngine
+
+    rules_dir = str(Path(__file__).parent.parent / "agentic_graph_rag" / "reasoning" / "rules")
+    engine = ReasoningEngine(rules_dir)
+    return run(query, driver, openai_client=client, reasoning=engine)
+
+
 MODES = {
     "vector": _run_vector_only,
     "cypher": _run_cypher,
     "hybrid": _run_hybrid,
     "agent_pattern": _run_agent_pattern,
     "agent_llm": _run_agent_llm,
+    "agent_mangle": _run_agent_mangle,
 }
 
 

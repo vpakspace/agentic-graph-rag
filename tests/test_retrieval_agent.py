@@ -254,7 +254,7 @@ class TestRun:
         client = MagicMock()
 
         run("q", driver, openai_client=client, use_llm_router=True)
-        mock_classify.assert_called_once_with("q", use_llm=True, openai_client=client)
+        mock_classify.assert_called_once_with("q", use_llm=True, openai_client=client, reasoning=None)
 
     @patch("agentic_graph_rag.agent.retrieval_agent.generate_answer")
     @patch("agentic_graph_rag.agent.retrieval_agent.self_correction_loop")

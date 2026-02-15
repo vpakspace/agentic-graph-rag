@@ -31,10 +31,10 @@ class TestLoadQuestions:
 # ---------------------------------------------------------------------------
 
 class TestModes:
-    def test_five_modes(self):
-        assert len(MODES) == 5
+    def test_six_modes(self):
+        assert len(MODES) == 6
         assert set(MODES.keys()) == {
-            "vector", "cypher", "hybrid", "agent_pattern", "agent_llm",
+            "vector", "cypher", "hybrid", "agent_pattern", "agent_llm", "agent_mangle",
         }
 
 
