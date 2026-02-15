@@ -1,6 +1,6 @@
 """Agentic Graph RAG — Streamlit UI.
 
-6 tabs: Ingest, Search & Q&A, Graph Explorer, Agent Trace, Benchmark, Settings.
+7 tabs: Ingest, Search & Q&A, Graph Explorer, Agent Trace, Benchmark, Reasoning, Settings.
 Port: 8506
 """
 
@@ -95,12 +95,13 @@ if "last_trace" not in st.session_state:
 # Tabs
 # ---------------------------------------------------------------------------
 
-tab_ingest, tab_search, tab_graph, tab_trace, tab_bench, tab_settings = st.tabs([
+tab_ingest, tab_search, tab_graph, tab_trace, tab_bench, tab_reasoning, tab_settings = st.tabs([
     t("tab_ingest"),
     t("tab_search"),
     t("tab_graph_explorer"),
     t("tab_agent_trace"),
     t("tab_benchmark"),
+    t("tab_reasoning"),
     t("tab_settings"),
 ])
 
@@ -355,7 +356,7 @@ with tab_bench:
 
     bench_modes = st.multiselect(
         t("bench_mode"),
-        ["vector", "cypher", "hybrid", "agent_pattern", "agent_llm"],
+        ["vector", "cypher", "hybrid", "agent_pattern", "agent_llm", "agent_mangle"],
         default=["vector", "hybrid", "agent_pattern"],
     )
 
@@ -398,7 +399,123 @@ with tab_bench:
             st.error(t("error", msg=str(e)))
 
 
-# ===================== TAB 6: SETTINGS ====================================
+# ===================== TAB 6: REASONING ===================================
+
+with tab_reasoning:
+    st.header(t("reasoning_header"))
+
+    from pathlib import Path as _Path
+
+    _default_rules_dir = _Path(__file__).resolve().parent.parent / "agentic_graph_rag" / "reasoning" / "rules"
+
+    # Load default rules from .mg files
+    _default_sources: dict[str, str] = {}
+    if _default_rules_dir.exists():
+        for _p in sorted(_default_rules_dir.glob("*.mg")):
+            _default_sources[_p.stem] = _p.read_text()
+
+    # Rule selector
+    _source_names = list(_default_sources.keys()) if _default_sources else ["routing"]
+    _selected_source = st.selectbox(
+        t("reasoning_rules_label"),
+        _source_names,
+        index=0,
+    )
+
+    # Editable text area
+    _default_text = _default_sources.get(_selected_source, "% Write Mangle rules here\n")
+    rules_text = st.text_area(
+        t("reasoning_rules_help"),
+        value=_default_text,
+        height=300,
+        key=f"rules_{_selected_source}",
+    )
+
+    st.divider()
+
+    # --- Routing test ---
+    st.subheader(t("reasoning_routing_header"))
+    test_query = st.text_input(
+        t("reasoning_query_label"),
+        placeholder=t("reasoning_query_placeholder"),
+        key="reasoning_query",
+    )
+
+    if st.button(t("reasoning_run"), disabled=not test_query):
+        try:
+            from agentic_graph_rag.reasoning.reasoning_engine import ReasoningEngine
+
+            engine = ReasoningEngine.from_sources({_selected_source: rules_text})
+            result = engine.classify_query(test_query)
+
+            if result is not None:
+                col1, col2 = st.columns(2)
+                with col1:
+                    st.metric(t("reasoning_tool"), result["tool"])
+                with col2:
+                    # Determine category from route
+                    st.metric(t("reasoning_category"), _selected_source)
+                st.success(f"route_to(\"{result['tool']}\", \"{test_query[:60]}...\")")
+            else:
+                st.warning(t("reasoning_no_match"))
+        except Exception as e:
+            st.error(t("reasoning_error", msg=str(e)))
+
+    st.divider()
+
+    # --- Access control test ---
+    if "access" in _default_sources or _selected_source == "access":
+        st.subheader(t("reasoning_access_header"))
+        col_role, col_action = st.columns(2)
+        with col_role:
+            access_role = st.text_input(t("reasoning_role_label"), value="/viewer", key="access_role")
+        with col_action:
+            access_action = st.text_input(t("reasoning_action_label"), value="/read", key="access_action")
+
+        if st.button(t("reasoning_access_run")):
+            try:
+                from agentic_graph_rag.reasoning.reasoning_engine import ReasoningEngine
+
+                access_src = _default_sources.get("access", rules_text) if _selected_source != "access" else rules_text
+                engine = ReasoningEngine.from_sources({"access": access_src})
+                allowed = engine.check_access(access_role, access_action)
+                if allowed:
+                    st.success(t("reasoning_access_allowed"))
+                else:
+                    st.error(t("reasoning_access_denied"))
+            except Exception as e:
+                st.error(t("reasoning_error", msg=str(e)))
+
+    st.divider()
+
+    # --- Stratification visualization ---
+    st.subheader(t("reasoning_strata_header"))
+    try:
+        from agentic_graph_rag.reasoning.reasoning_engine import ReasoningEngine
+
+        engine = ReasoningEngine.from_sources({_selected_source: rules_text})
+        strata = engine.get_strata(_selected_source)
+        if strata:
+            for idx, predicates in enumerate(strata):
+                st.text(t("reasoning_strata_text", idx=idx, predicates=", ".join(predicates)))
+            # Mermaid diagram
+            mermaid_lines = ["graph TD"]
+            for idx, predicates in enumerate(strata):
+                node_id = f"S{idx}"
+                label = f"Stratum {idx}\\n{', '.join(predicates[:5])}"
+                if len(predicates) > 5:
+                    label += f"\\n+{len(predicates) - 5} more"
+                mermaid_lines.append(f"    {node_id}[\"{label}\"]")
+                if idx > 0:
+                    mermaid_lines.append(f"    S{idx - 1} --> {node_id}")
+            st.markdown(f"```mermaid\n" + "\n".join(mermaid_lines) + "\n```")
+        else:
+            st.info(t("reasoning_no_match"))
+    except Exception as e:
+        st.error(t("reasoning_error", msg=str(e)))
+
+
+# ===================== TAB 7: SETTINGS ====================================
 
 with tab_settings:
     st.header(t("settings_header"))

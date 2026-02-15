@@ -58,6 +58,22 @@ class ReasoningEngine:
         self._rule_sources: dict[str, str] = {}
         self._load_rules()
 
+    @classmethod
+    def from_sources(cls, sources: dict[str, str]) -> ReasoningEngine:
+        """Create engine from rule source strings (no filesystem).
+
+        ``sources`` maps logical name (e.g. "routing") to Mangle source text.
+        """
+        import tempfile
+
+        tmp = tempfile.mkdtemp()
+        engine = cls.__new__(cls)
+        engine._rules_dir = Path(tmp)
+        engine._driver = None
+        engine._query_contains = _QueryContainsPredicate()
+        engine._rule_sources = dict(sources)
+        return engine
+
     def _load_rules(self) -> None:
         """Load all .mg files from rules directory."""
         if not self._rules_dir.exists():
@@ -146,6 +162,30 @@ class ReasoningEngine:
             results.append({"args": args})
 
         return results
+
+
+    @property
+    def rule_sources(self) -> dict[str, str]:
+        """Return loaded rule sources keyed by logical name."""
+        return dict(self._rule_sources)
+
+    def get_strata(self, source_name: str) -> list[list[str]]:
+        """Return stratification for a rule source as list of predicate lists.
+
+        Each inner list represents one stratum (evaluation layer).
+        """
+        source = self._rule_sources.get(source_name)
+        if source is None:
+            return []
+        try:
+            from pymangle.analysis import stratify
+
+            program = parse(source)
+            strata = stratify(program)
+            return [sorted(s.predicates) for s in strata]
+        except Exception as exc:
+            logger.warning("Stratification failed for %s: %s", source_name, exc)
+            return []
 
 
 def _escape(s: str) -> str:

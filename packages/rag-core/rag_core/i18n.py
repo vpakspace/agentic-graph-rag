@@ -160,6 +160,44 @@ TRANSLATIONS: dict[str, dict[str, str]] = {
     "settings_monitor_total": {"en": "Total queries: {count}", "ru": "Всего запросов: {count}"},
     "settings_suggestions": {"en": "Tuning Suggestions", "ru": "Рекомендации по настройке"},
 
+    # Reasoning tab
+    "tab_reasoning": {"en": "Reasoning", "ru": "Рассуждения"},
+    "reasoning_header": {"en": "Mangle Reasoning Engine", "ru": "Движок рассуждений Mangle"},
+    "reasoning_rules_label": {"en": "Mangle rules (.mg)", "ru": "Правила Mangle (.mg)"},
+    "reasoning_rules_help": {
+        "en": "Edit declarative rules. Syntax: head :- body. Facts: pred(args).",
+        "ru": "Редактируйте декларативные правила. Синтаксис: head :- body. Факты: pred(args).",
+    },
+    "reasoning_query_label": {"en": "Test query", "ru": "Тестовый запрос"},
+    "reasoning_query_placeholder": {
+        "en": "Enter a query to classify...",
+        "ru": "Введите запрос для классификации...",
+    },
+    "reasoning_run": {"en": "Run Reasoning", "ru": "Запустить"},
+    "reasoning_routing_header": {"en": "Routing Decision", "ru": "Решение роутера"},
+    "reasoning_tool": {"en": "Suggested Tool", "ru": "Рекомендуемый инструмент"},
+    "reasoning_category": {"en": "Category", "ru": "Категория"},
+    "reasoning_no_match": {
+        "en": "No routing match — would fall back to pattern router.",
+        "ru": "Нет совпадений — fallback на паттерн-роутер.",
+    },
+    "reasoning_access_header": {"en": "Access Control Check", "ru": "Проверка доступа"},
+    "reasoning_role_label": {"en": "Role", "ru": "Роль"},
+    "reasoning_action_label": {"en": "Action", "ru": "Действие"},
+    "reasoning_access_run": {"en": "Check Access", "ru": "Проверить"},
+    "reasoning_access_allowed": {"en": "ALLOWED", "ru": "РАЗРЕШЕНО"},
+    "reasoning_access_denied": {"en": "DENIED", "ru": "ЗАПРЕЩЕНО"},
+    "reasoning_strata_header": {"en": "Stratification", "ru": "Стратификация"},
+    "reasoning_strata_text": {
+        "en": "Stratum {idx}: {predicates}",
+        "ru": "Страт {idx}: {predicates}",
+    },
+    "reasoning_error": {"en": "Reasoning error: {msg}", "ru": "Ошибка рассуждений: {msg}"},
+    "reasoning_loaded": {
+        "en": "Rules loaded: {count} rule(s) parsed.",
+        "ru": "Правила загружены: {count} правил(о) обработано.",
+    },
+
     # Common
     "error": {"en": "Error: {msg}", "ru": "Ошибка: {msg}"},
 }
