@@ -21,20 +21,23 @@ class _QueryContainsPredicate:
 
     def __init__(self) -> None:
         self._query: str = ""
+        self._query_lower: str = ""
 
     def set_query(self, query: str) -> None:
-        self._query = query.lower()
+        self._query = query
+        self._query_lower = query.lower()
 
     def query(self, inputs: list[Constant], filters: list):
         """Check if keyword is contained in the current query string.
 
         Returns [query_string, keyword] rows so that the atom
         query_contains(Q, Keyword) unifies correctly.
+        Uses original query string (not lowercased) to match current_query fact.
         """
         if not inputs:
             return iter([])
         keyword = str(inputs[0].value).lower()
-        if keyword in self._query:
+        if keyword in self._query_lower:
             yield [Constant(self._query, TermType.STRING), inputs[0]]
         return
 
