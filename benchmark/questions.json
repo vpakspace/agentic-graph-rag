@@ -1,107 +1,107 @@
 [
   {
     "id": 1,
-    "question": "What is LMCache?",
-    "question_ru": "Что такое LMCache?",
+    "question": "What frameworks for graph knowledge bases are mentioned?",
+    "question_ru": "Какие фреймворки для графовых баз знаний упоминаются?",
     "type": "simple",
-    "keywords": ["LMCache", "cache", "system"]
+    "keywords": ["Graphiti", "Cognee", "FalkorDB", "Docling"]
   },
   {
     "id": 2,
-    "question": "How does KV cache compression work?",
-    "question_ru": "Как работает сжатие KV-кеша?",
+    "question": "What is an ontology in the context of knowledge graphs?",
+    "question_ru": "Что такое онтология в контексте графов знаний?",
     "type": "simple",
-    "keywords": ["KV cache", "compression"]
+    "keywords": ["ontology", "OWL", "classes", "schema"]
   },
   {
     "id": 3,
-    "question": "What is the relationship between LMCache and vLLM?",
-    "question_ru": "Какая связь между LMCache и vLLM?",
+    "question": "What is the relationship between OWL ontologies and graph validation?",
+    "question_ru": "Какая связь между OWL-онтологиями и валидацией графа?",
     "type": "relation",
-    "keywords": ["LMCache", "vLLM", "integration"]
+    "keywords": ["OWL", "validation", "schema", "verification"]
   },
   {
     "id": 4,
-    "question": "How are CacheGen and LMCache related?",
-    "question_ru": "Как связаны CacheGen и LMCache?",
+    "question": "How are entities and relationships extracted from text?",
+    "question_ru": "Как извлекаются сущности и связи из текста?",
     "type": "relation",
-    "keywords": ["CacheGen", "LMCache"]
+    "keywords": ["NER", "extraction", "triplets", "GPT"]
   },
   {
     "id": 5,
-    "question": "How does the token selection strategy affect cache eviction?",
-    "question_ru": "Как стратегия выбора токенов влияет на вытеснение кеша?",
+    "question": "How does the entity extraction strategy affect graph quality?",
+    "question_ru": "Как стратегия извлечения сущностей влияет на качество графа?",
     "type": "multi_hop",
-    "keywords": ["token selection", "cache eviction", "strategy"]
+    "keywords": ["extraction", "quality", "strategy", "graph"]
   },
   {
     "id": 6,
-    "question": "What is the chain from user query to cached response?",
-    "question_ru": "Какая цепочка от запроса пользователя до кешированного ответа?",
+    "question": "What is the chain from document to knowledge graph triplet?",
+    "question_ru": "Какая цепочка от документа до триплета графа знаний?",
     "type": "multi_hop",
-    "keywords": ["query", "response", "chain", "pipeline"]
+    "keywords": ["document", "triplet", "pipeline", "chain"]
   },
   {
     "id": 7,
-    "question": "Compare prefix caching and full KV caching approaches",
-    "question_ru": "Сравни подходы prefix caching и full KV caching",
+    "question": "Compare local and LLM-based entity extraction approaches",
+    "question_ru": "Сравни локальные и LLM-подходы к извлечению сущностей",
     "type": "multi_hop",
-    "keywords": ["prefix caching", "full KV caching", "comparison"]
+    "keywords": ["local", "LLM", "extraction", "comparison"]
   },
   {
     "id": 8,
-    "question": "List all components of the LMCache architecture",
-    "question_ru": "Перечисли все компоненты архитектуры LMCache",
+    "question": "List all components of the knowledge graph architecture",
+    "question_ru": "Перечисли все компоненты архитектуры графа знаний",
     "type": "global",
-    "keywords": ["components", "architecture", "all"]
+    "keywords": ["components", "architecture", "all", "graph"]
   },
   {
     "id": 9,
-    "question": "Give an overview of cache storage backends",
-    "question_ru": "Дай обзор бэкендов хранения кеша",
+    "question": "Give an overview of temporal data storage in knowledge graphs",
+    "question_ru": "Дай обзор хранения временных данных в графах знаний",
     "type": "global",
-    "keywords": ["storage", "backends", "overview"]
+    "keywords": ["temporal", "storage", "overview", "time"]
   },
   {
     "id": 10,
-    "question": "Summarize all evaluation metrics used in the paper",
-    "question_ru": "Резюмируй все метрики оценки, используемые в статье",
+    "question": "Summarize all methods for multimodal data integration",
+    "question_ru": "Резюмируй все методы интеграции мультимодальных данных",
     "type": "global",
-    "keywords": ["metrics", "evaluation", "summary"]
+    "keywords": ["multimodal", "integration", "methods", "summary"]
   },
   {
     "id": 11,
-    "question": "When was LMCache first released?",
-    "question_ru": "Когда был впервые выпущен LMCache?",
+    "question": "When were temporal attributes first introduced in graph databases?",
+    "question_ru": "Когда временные атрибуты были впервые введены в графовых базах данных?",
     "type": "temporal",
-    "keywords": ["release", "date", "first"]
+    "keywords": ["temporal", "first", "introduced", "history"]
   },
   {
     "id": 12,
-    "question": "What changes occurred between CacheGen v1 and v2?",
-    "question_ru": "Какие изменения произошли между CacheGen v1 и v2?",
+    "question": "What changes occurred in graph RAG approaches over time?",
+    "question_ru": "Какие изменения произошли в подходах GraphRAG со временем?",
     "type": "temporal",
-    "keywords": ["changes", "version", "history"]
+    "keywords": ["changes", "GraphRAG", "evolution", "history"]
   },
   {
     "id": 13,
-    "question": "What performance improvements were achieved over time?",
-    "question_ru": "Какие улучшения производительности были достигнуты со временем?",
+    "question": "What improvements were achieved in knowledge graph construction?",
+    "question_ru": "Какие улучшения были достигнуты в построении графов знаний?",
     "type": "temporal",
-    "keywords": ["performance", "improvements", "timeline"]
+    "keywords": ["improvements", "construction", "progress"]
   },
   {
     "id": 14,
-    "question": "How does the blending engine combine local and remote cache?",
-    "question_ru": "Как движок объединяет локальный и удалённый кеш?",
+    "question": "How does the Docling framework connect to graph construction?",
+    "question_ru": "Как фреймворк Docling связан с построением графа?",
     "type": "relation",
-    "keywords": ["blending", "local", "remote", "cache"]
+    "keywords": ["Docling", "graph", "construction", "pipeline"]
   },
   {
     "id": 15,
-    "question": "What role does GPU memory play in the caching pipeline?",
-    "question_ru": "Какую роль играет GPU память в пайплайне кеширования?",
+    "question": "What role does Neo4j play in the knowledge graph pipeline?",
+    "question_ru": "Какую роль играет Neo4j в пайплайне графа знаний?",
     "type": "simple",
-    "keywords": ["GPU", "memory", "pipeline"]
+    "keywords": ["Neo4j", "role", "pipeline", "storage"]
   }
 ]

@@ -92,6 +92,9 @@ def self_correction_loop(
 
     tool_name = select_tool(decision)
     tried_tools: set[str] = set()
+    best_results: list[SearchResult] = []
+    best_score: float = 0.0
+    best_attempt: int = 0
 
     for attempt in range(max_retries + 1):
         # Execute tool
@@ -109,6 +112,12 @@ def self_correction_loop(
                 score, relevance_threshold, tool_name, attempt + 1,
             )
 
+            # Track best results across attempts
+            if score > best_score:
+                best_results = results
+                best_score = score
+                best_attempt = attempt
+
             if score >= relevance_threshold:
                 return results, attempt
 
@@ -122,6 +131,10 @@ def self_correction_loop(
                 logger.info("No more tools to escalate to")
                 break
 
+    # Return best results found across all attempts
+    if best_results:
+        logger.info("Returning best results (score=%.2f from attempt %d)", best_score, best_attempt + 1)
+        return best_results, max_retries
     return results, max_retries
 
 

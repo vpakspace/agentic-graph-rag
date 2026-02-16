@@ -35,15 +35,21 @@ def evaluate_relevance(
         logger.warning("No results to evaluate")
         return 0.0
 
+    # Evaluate only top-5 results to keep prompt focused
+    top_results = results[:5]
     context_chunks = []
-    for i, result in enumerate(results, start=1):
-        context_chunks.append(f"[Chunk {i}]\n{result.chunk.enriched_content[:300]}...")
+    for i, result in enumerate(top_results, start=1):
+        text = result.chunk.enriched_content or result.chunk.content
+        context_chunks.append(f"[Chunk {i}]\n{text[:400]}")
     context = "\n\n".join(context_chunks)
 
     prompt = (
-        f"Rate the relevance of each retrieved chunk to the query on a scale of 1-5.\n"
-        f"Return ONLY a comma-separated list of scores.\n\n"
-        f"Query: {query}\n\nChunks:\n{context}\n\nScores (comma-separated):"
+        f"You are evaluating search results for a RAG system.\n"
+        f"Rate how relevant each chunk is to answering the query.\n"
+        f"Scale: 1=irrelevant, 2=slightly relevant, 3=moderately relevant, "
+        f"4=very relevant, 5=perfect match.\n"
+        f"Return ONLY a comma-separated list of integer scores (one per chunk).\n\n"
+        f"Query: {query}\n\nRetrieved chunks:\n{context}\n\nScores:"
     )
 
     try:

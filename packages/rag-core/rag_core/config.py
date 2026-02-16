@@ -37,7 +37,7 @@ class IndexingSettings(BaseSettings):
 class RetrievalSettings(BaseSettings):
     top_k_vector: int = 10
     top_k_final: int = 5
-    vector_threshold: float = 0.7
+    vector_threshold: float = 0.5
     max_hops: int = 2
     ppr_alpha: float = 0.15
 
@@ -46,7 +46,7 @@ class RetrievalSettings(BaseSettings):
 
 class AgentSettings(BaseSettings):
     max_retries: int = 2
-    relevance_threshold: float = 3.0
+    relevance_threshold: float = 2.0
 
     model_config = {"env_prefix": "AGENT_"}
 
@@ -60,7 +60,7 @@ class Settings(BaseSettings):
 
     log_level: str = "INFO"
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
 def get_settings() -> Settings:

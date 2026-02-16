@@ -20,6 +20,7 @@ from rag_core.models import Chunk, Entity, PassageNode, PhraseNode
 
 if TYPE_CHECKING:
     from neo4j import Driver
+    from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -251,3 +252,76 @@ def build_dual_graph(
         len(phrase_nodes), len(passage_nodes), link_count,
     )
     return phrase_nodes, passage_nodes, link_count
+
+
+# ---------------------------------------------------------------------------
+# 6. Embed PhraseNodes and create vector index
+# ---------------------------------------------------------------------------
+
+PHRASE_INDEX_NAME = "phrase_node_index"
+
+
+def embed_phrase_nodes(
+    phrase_nodes: list[PhraseNode],
+    driver: Driver,
+    openai_client: OpenAI | None = None,
+) -> int:
+    """Add embeddings to PhraseNodes by embedding their name + description.
+
+    Returns count of nodes updated.
+    """
+    cfg = get_settings()
+    if openai_client is None:
+        from openai import OpenAI as _OpenAI
+
+        openai_client = _OpenAI(api_key=cfg.openai.api_key)
+
+    if not phrase_nodes:
+        return 0
+
+    # Batch embed all phrase texts
+    texts = [
+        f"{pn.name}: {pn.entity_type}" for pn in phrase_nodes
+    ]
+
+    response = openai_client.embeddings.create(
+        model=cfg.openai.embedding_model,
+        input=texts,
+        dimensions=cfg.openai.embedding_dimensions,
+    )
+
+    with driver.session() as session:
+        for i, pn in enumerate(phrase_nodes):
+            emb = response.data[i].embedding
+            session.run(
+                f"""
+                MATCH (p:{PHRASE_LABEL} {{id: $id}})
+                SET p.embedding = $embedding
+                """,
+                id=pn.id,
+                embedding=emb,
+            )
+
+    logger.info("Added embeddings to %d PhraseNodes", len(phrase_nodes))
+    return len(phrase_nodes)
+
+
+def init_phrase_index(driver: Driver) -> None:
+    """Create vector index on PhraseNode embeddings if not exists."""
+    cfg = get_settings()
+    with driver.session() as session:
+        session.run(
+            f"""
+            CREATE VECTOR INDEX {PHRASE_INDEX_NAME} IF NOT EXISTS
+            FOR (n:{PHRASE_LABEL})
+            ON (n.embedding)
+            OPTIONS {{
+                indexConfig: {{
+                    `vector.dimensions`: $dimensions,
+                    `vector.similarity_function`: 'cosine'
+                }}
+            }}
+            """,
+            dimensions=cfg.openai.embedding_dimensions,
+        )
+    logger.info("Phrase vector index '%s' initialized", PHRASE_INDEX_NAME)

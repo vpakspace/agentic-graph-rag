@@ -39,6 +39,10 @@ use_llm_router = st.sidebar.checkbox(
     "LLM Router" if lang == "en" else "LLM Роутер",
     value=False,
 )
+use_mangle_router = st.sidebar.checkbox(
+    "Mangle Router" if lang == "en" else "Mangle Роутер",
+    value=False,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -62,12 +66,16 @@ def _get_openai_client():
 @st.cache_resource
 def _get_vector_store():
     from rag_core.vector_store import VectorStore
-    cfg = get_settings()
-    return VectorStore(
-        uri=cfg.neo4j.uri,
-        user=cfg.neo4j.user,
-        password=cfg.neo4j.password,
-    )
+    store = VectorStore()
+    store.init_index()
+    return store
+
+
+@st.cache_resource
+def _get_reasoning_engine():
+    from agentic_graph_rag.reasoning.reasoning_engine import ReasoningEngine
+    rules_dir = str(Path(__file__).resolve().parent.parent / "agentic_graph_rag" / "reasoning" / "rules")
+    return ReasoningEngine(rules_dir)
 
 
 @st.cache_resource
@@ -142,6 +150,11 @@ with tab_ingest:
 
     skip_enrichment = st.checkbox(t("ingest_skip_enrichment"), value=False)
 
+    build_graph = st.checkbox(
+        "Build Knowledge Graph" if lang == "en" else "Построить граф знаний",
+        value=True,
+    )
+
     if st.button(t("ingest_button"), disabled=not file_path):
         try:
             driver = _get_neo4j_driver()
@@ -156,25 +169,69 @@ with tab_ingest:
             progress = st.progress(0, text=t("ingest_loading"))
             text = load_file(file_path, use_gpu=use_gpu)
             st.info(t("ingest_chars_loaded", chars=len(text)))
-            progress.progress(20, text=t("ingest_chunking"))
+            progress.progress(15, text=t("ingest_chunking"))
 
             cfg = get_settings()
             chunks = chunk_text(text, cfg.indexing.chunk_size, cfg.indexing.chunk_overlap)
             st.info(t("ingest_chunks_created", count=len(chunks)))
-            progress.progress(40, text=t("ingest_enriching"))
+            progress.progress(30, text=t("ingest_enriching"))
 
             if not skip_enrichment:
                 chunks = enrich_chunks(chunks, text)
-            progress.progress(60, text=t("ingest_embedding"))
+            progress.progress(45, text=t("ingest_embedding"))
 
             chunks = embed_chunks(chunks)
-            progress.progress(80, text=t("ingest_storing"))
+            progress.progress(60, text=t("ingest_storing"))
 
             store.add_chunks(chunks)
             total = store.count()
+
+            # --- Build Knowledge Graph (skeleton + dual-node) ---
+            if build_graph:
+                from agentic_graph_rag.indexing.dual_node import (
+                    build_dual_graph,
+                    embed_phrase_nodes,
+                    init_phrase_index,
+                )
+                from agentic_graph_rag.indexing.skeleton import build_skeleton_index
+
+                graph_label = "Building graph..." if lang == "en" else "Построение графа..."
+                progress.progress(70, text=graph_label)
+
+                embeddings = [c.embedding for c in chunks]
+                entities, relationships, skeletal, peripheral = build_skeleton_index(
+                    chunks, embeddings, openai_client=client,
+                )
+
+                ent_label = (
+                    f"Extracted {len(entities)} entities, {len(relationships)} relationships"
+                    if lang == "en"
+                    else f"Извлечено {len(entities)} сущностей, {len(relationships)} связей"
+                )
+                st.info(ent_label)
+                progress.progress(80, text=graph_label)
+
+                phrase_nodes, passage_nodes, link_count = build_dual_graph(
+                    entities, chunks, driver,
+                )
+
+                progress.progress(90, text=graph_label)
+
+                # Embed PhraseNodes and create vector index
+                if phrase_nodes:
+                    embed_phrase_nodes(phrase_nodes, driver, openai_client=client)
+                    init_phrase_index(driver)
+
             progress.progress(100, text="Done")
 
-            st.success(t("ingest_success", chunks=len(chunks), total=total))
+            graph_msg = ""
+            if build_graph:
+                graph_msg = (
+                    f" | Graph: {len(entities)} entities, {len(relationships)} rels"
+                    if lang == "en"
+                    else f" | Граф: {len(entities)} сущностей, {len(relationships)} связей"
+                )
+            st.success(t("ingest_success", chunks=len(chunks), total=total) + graph_msg)
         except Exception as e:
             st.error(t("error", msg=str(e)))
 
@@ -205,8 +262,9 @@ with tab_search:
             with st.spinner(t("search_thinking")):
                 if mode == t("search_mode_agent"):
                     from agentic_graph_rag.agent.retrieval_agent import run as agent_run
+                    reasoning = _get_reasoning_engine() if use_mangle_router else None
                     with monitor.track("agent", "agent_router"):
-                        qa = agent_run(query, driver, openai_client=client, use_llm_router=use_llm_router)
+                        qa = agent_run(query, driver, openai_client=client, use_llm_router=use_llm_router, reasoning=reasoning)
                 elif mode == t("search_mode_hybrid"):
                     from rag_core.generator import generate_answer
 
@@ -573,7 +631,7 @@ with tab_settings:
         try:
             store = _get_vector_store()
             count = store.count()
-            store.clear()
+            store.delete_all()
             st.success(t("settings_cleared", count=count))
         except Exception as e:
             st.error(t("error", msg=str(e)))
