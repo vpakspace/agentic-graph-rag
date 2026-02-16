@@ -4,29 +4,40 @@
 
 A production-ready Graph RAG system combining four cutting-edge techniques from recent research into a unified retrieval pipeline with declarative reasoning.
 
-## Benchmark Results
+## Benchmark Results (v5)
 
 Evaluated on 15 bilingual questions (5 types) across 6 retrieval modes:
 
 | Mode | Accuracy | Description |
 |------|----------|-------------|
+| **Agent (pattern)** | **12/15 (80%)** | Auto-routing via regex patterns + self-correction |
+| **Agent (Mangle)** | **12/15 (80%)** | Declarative Datalog rule routing + self-correction |
 | **Vector** | **11/15 (73%)** | Embedding similarity search |
 | **Hybrid** | **11/15 (73%)** | Vector + Graph with RRF fusion |
+| **Cypher** | **10/15 (67%)** | Graph traversal via VectorCypher (3-hop) |
 | **Agent (LLM)** | **10/15 (67%)** | Auto-routing via GPT-4o-mini |
-| **Agent (Mangle)** | **10/15 (67%)** | Declarative Datalog rule routing |
-| **Cypher** | **9/15 (60%)** | Graph traversal via VectorCypher |
-| **Agent (pattern)** | **9/15 (60%)** | Auto-routing via regex patterns |
-| **Overall** | **60/90 (67%)** | |
+| **Overall** | **66/90 (73%)** | |
 
 Accuracy by query type (best mode per type):
 
 | Type | Best Mode | Accuracy |
 |------|-----------|----------|
-| simple | hybrid, agent_pattern, agent_mangle | 100% |
-| multi_hop | vector, hybrid, agent_llm | 100% |
-| relation | vector | 100% |
-| temporal | vector, hybrid, agent_llm, agent_mangle | 67% |
-| global | all modes | 33% |
+| simple | vector, hybrid, agent_pattern, agent_mangle | 100% |
+| multi_hop | all modes | 100% |
+| relation | vector, hybrid, agent_pattern, agent_llm, agent_mangle | 100% |
+| temporal | agent_mangle | 100% |
+| global | agent_pattern | 67% |
+
+<details>
+<summary>Benchmark history (v3 → v4 → v5)</summary>
+
+| Version | Overall | Key Changes |
+|---------|---------|-------------|
+| v3 | 34/90 (38%) | Baseline (lang=en, pre-improvements) |
+| v4 | 60/90 (67%) | lang=ru, cosine ranking, synthesis prompt, temporal boost |
+| v5 | 66/90 (73%) | comprehensive_search, completeness check, retry query, max_hops=3 |
+
+</details>
 
 ## Key Techniques
 
@@ -50,7 +61,7 @@ Ingestion:
 Retrieval:
   Query -> Router (simple/relation/multi_hop/global/temporal)
            Router cascade: Mangle -> LLM -> Pattern fallback
-        -> Tool Selection (vector/cypher/hybrid/full_read/temporal)
+        -> Tool Selection (vector/cypher/hybrid/comprehensive/full_read/temporal)
         -> Self-Correction Loop (evaluate relevance -> escalate if <2.0)
         -> Graph Verifier (contradiction detection)
         -> Generator (GPT-4o synthesis + dynamic confidence + citations)
@@ -71,7 +82,7 @@ agentic-graph-rag/
 │       ├── vector_store.py    # Neo4j Vector Index CRUD
 │       ├── kg_client.py       # Graphiti wrapper + Cypher
 │       ├── generator.py       # LLM answer synthesis + dynamic confidence
-│       ├── reflector.py       # Relevance evaluation (1-5 scale)
+│       ├── reflector.py       # Relevance evaluation (1-5 scale) + completeness check
 │       └── i18n.py            # RU/EN localization (~50 keys)
 │
 ├── agentic_graph_rag/         # Graph RAG components
@@ -83,7 +94,7 @@ agentic-graph-rag/
 │   ├── agent/
 │   │   ├── router.py          # Query classifier (pattern + LLM + Mangle)
 │   │   ├── retrieval_agent.py # Orchestrator + self-correction loop
-│   │   └── tools.py           # 6 tools: vector, cypher, community, hybrid, temporal, full_read
+│   │   └── tools.py           # 7 tools: vector, cypher, community, hybrid, temporal, full_read, comprehensive
 │   ├── generation/
 │   │   └── graph_verifier.py  # Contradiction detection + claim verification
 │   ├── reasoning/
@@ -103,7 +114,7 @@ agentic-graph-rag/
 │   ├── runner.py              # 6-mode benchmark runner
 │   └── compare.py             # Comparison table generator
 │
-└── tests/                     # 381 unit tests
+└── tests/                     # 398 unit tests
 ```
 
 ## Quick Start
@@ -143,7 +154,7 @@ docker run -d \
 ### Run Tests
 
 ```bash
-pytest -x -q  # 381 tests, ~2 seconds
+pytest -x -q  # 398 tests, ~2 seconds
 ```
 
 ### Run Streamlit UI
@@ -179,10 +190,10 @@ print(compare_modes(results))
 The agent evaluates retrieval quality (1-5 scale) and escalates through the tool chain when results are insufficient:
 
 ```
-vector_search -> cypher_traverse -> hybrid_search -> full_document_read
+vector_search -> cypher_traverse -> hybrid_search -> comprehensive_search -> full_document_read
 ```
 
-Each retry uses a different tool with expanded search scope. Max 2 retries by default. Best results tracked across attempts.
+Each retry rephrases the query via LLM and uses a different tool with expanded search scope. For GLOBAL queries, a completeness check triggers additional retrieval if the answer is incomplete. Max 2 retries by default. Best results tracked across attempts.
 
 ## Mangle Reasoning
 
@@ -207,7 +218,7 @@ All settings via `.env` or environment variables:
 | `RETRIEVAL_TOP_K_VECTOR` | `10` | Vector search results count |
 | `RETRIEVAL_TOP_K_FINAL` | `10` | Final results after fusion |
 | `RETRIEVAL_VECTOR_THRESHOLD` | `0.5` | Minimum similarity score |
-| `RETRIEVAL_MAX_HOPS` | `2` | Max graph traversal depth |
+| `RETRIEVAL_MAX_HOPS` | `3` | Max graph traversal depth |
 | `AGENT_MAX_RETRIES` | `2` | Self-correction retries |
 | `AGENT_RELEVANCE_THRESHOLD` | `2.0` | Minimum relevance score (1-5) |
 
@@ -220,7 +231,7 @@ All settings via `.env` or environment variables:
 - **Doc Parsing**: Docling (PDF/DOCX/PPTX + GPU)
 - **Graph Algorithms**: NetworkX (PageRank, KNN, PPR)
 - **UI**: Streamlit (7 tabs)
-- **Testing**: pytest (381 tests) + ruff
+- **Testing**: pytest (398 tests) + ruff
 
 ## Streamlit UI Tabs
 
