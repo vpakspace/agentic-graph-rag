@@ -36,7 +36,7 @@ class IndexingSettings(BaseSettings):
 
 class RetrievalSettings(BaseSettings):
     top_k_vector: int = 10
-    top_k_final: int = 5
+    top_k_final: int = 10
     vector_threshold: float = 0.5
     max_hops: int = 2
     ppr_alpha: float = 0.15

@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 from rag_core.models import Chunk, GraphContext, SearchResult
 
 from agentic_graph_rag.agent.tools import (
+    _cosine_similarity,
     _embed_query,
     _graph_context_to_results,
     _rrf_merge,
@@ -155,16 +156,34 @@ class TestVectorSearch:
 # full_document_read
 # ---------------------------------------------------------------------------
 
+class TestCosineSimilarity:
+    def test_identical_vectors(self):
+        assert _cosine_similarity([1.0, 0.0], [1.0, 0.0]) == 1.0
+
+    def test_orthogonal_vectors(self):
+        assert _cosine_similarity([1.0, 0.0], [0.0, 1.0]) == 0.0
+
+    def test_zero_vector(self):
+        assert _cosine_similarity([0.0, 0.0], [1.0, 0.0]) == 0.0
+
+
 class TestFullDocumentRead:
-    def test_reads_passages(self):
+    def test_reads_and_ranks_passages(self):
         driver = _mock_driver()
         session = driver.session().__enter__()
-        client = _mock_openai_client()
+        # query embedding = [1.0, 0.0]
+        client = _mock_openai_client([1.0, 0.0])
 
         rec1 = MagicMock()
-        rec1.__getitem__ = lambda self, key: {"id": "p1", "text": "Text one", "chunk_id": "c1"}[key]
+        rec1.__getitem__ = lambda self, key: {
+            "id": "p1", "text": "Text one", "chunk_id": "c1",
+            "embedding": [0.5, 0.5],
+        }[key]
         rec2 = MagicMock()
-        rec2.__getitem__ = lambda self, key: {"id": "p2", "text": "Text two", "chunk_id": "c2"}[key]
+        rec2.__getitem__ = lambda self, key: {
+            "id": "p2", "text": "Text two", "chunk_id": "c2",
+            "embedding": [1.0, 0.0],  # identical to query → highest similarity
+        }[key]
 
         result_mock = MagicMock()
         result_mock.__iter__ = MagicMock(return_value=iter([rec1, rec2]))
@@ -172,9 +191,30 @@ class TestFullDocumentRead:
 
         results = full_document_read("overview", driver, client, top_k=5)
         assert len(results) == 2
-        assert results[0].chunk.content == "Text one"
+        # rec2 has higher similarity, should be first
+        assert results[0].chunk.content == "Text two"
         assert results[0].source == "full_read"
-        assert results[1].chunk.content == "Text two"
+        assert results[0].score > results[1].score
+        assert results[1].chunk.content == "Text one"
+
+    def test_passages_without_embedding(self):
+        driver = _mock_driver()
+        session = driver.session().__enter__()
+        client = _mock_openai_client([1.0, 0.0])
+
+        rec1 = MagicMock()
+        rec1.__getitem__ = lambda self, key: {
+            "id": "p1", "text": "No emb", "chunk_id": "c1",
+            "embedding": None,
+        }[key]
+
+        result_mock = MagicMock()
+        result_mock.__iter__ = MagicMock(return_value=iter([rec1]))
+        session.run.return_value = result_mock
+
+        results = full_document_read("overview", driver, client, top_k=5)
+        assert len(results) == 1
+        assert results[0].score == 0.0
 
     def test_empty_passages(self):
         driver = _mock_driver()
@@ -204,12 +244,43 @@ class TestWrapperTools:
         mock_vs.assert_called_once_with("test", driver, client)
         assert len(results) == 2
 
-    @patch("agentic_graph_rag.agent.tools.cypher_traverse")
-    def test_temporal_query_uses_deep_traverse(self, mock_ct):
-        mock_ct.return_value = _make_results(3)
+    def test_temporal_query_boosts_temporal_passages(self):
         driver = _mock_driver()
+        session = driver.session().__enter__()
+        client = _mock_openai_client([1.0, 0.0])
+
+        rec_temporal = MagicMock()
+        rec_temporal.__getitem__ = lambda self, key: {
+            "id": "p1", "text": "Компания основана в 2015 году",
+            "chunk_id": "c1", "embedding": [0.5, 0.5],
+        }[key]
+        rec_regular = MagicMock()
+        rec_regular.__getitem__ = lambda self, key: {
+            "id": "p2", "text": "Описание продукта и характеристики",
+            "chunk_id": "c2", "embedding": [0.6, 0.4],
+        }[key]
+
+        result_mock = MagicMock()
+        result_mock.__iter__ = MagicMock(return_value=iter([rec_temporal, rec_regular]))
+        session.run.return_value = result_mock
+
+        results = temporal_query("когда основана компания", driver, client)
+        assert len(results) == 2
+        assert results[0].source == "temporal"
+        # Temporal passage should be boosted above regular
+        assert results[0].chunk.content == "Компания основана в 2015 году"
+
+    def test_temporal_query_empty_falls_back(self):
+        driver = _mock_driver()
+        session = driver.session().__enter__()
         client = _mock_openai_client()
 
-        results = temporal_query("when", driver, client)
-        mock_ct.assert_called_once_with("when", driver, client, max_hops=3)
-        assert len(results) == 3
+        result_mock = MagicMock()
+        result_mock.__iter__ = MagicMock(return_value=iter([]))
+        session.run.return_value = result_mock
+
+        with patch("agentic_graph_rag.agent.tools.vector_search") as mock_vs:
+            mock_vs.return_value = _make_results(2)
+            results = temporal_query("when", driver, client)
+            mock_vs.assert_called_once()
+            assert len(results) == 2

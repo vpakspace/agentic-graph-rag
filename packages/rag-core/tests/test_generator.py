@@ -37,7 +37,7 @@ class TestGenerateAnswer:
         qa = generate_answer("What is X?", results, openai_client=client)
 
         assert qa.answer == "The answer based on Chunk 1 is X."
-        assert qa.confidence == 0.5
+        assert 0.0 < qa.confidence <= 1.0
         assert qa.query == "What is X?"
         assert len(qa.sources) == 1
         client.chat.completions.create.assert_called_once()

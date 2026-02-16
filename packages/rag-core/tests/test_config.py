@@ -60,7 +60,7 @@ class TestRetrievalSettings:
     def test_defaults(self):
         s = RetrievalSettings()
         assert s.top_k_vector == 10
-        assert s.top_k_final == 5
+        assert s.top_k_final == 10
         assert s.vector_threshold == 0.5
         assert s.max_hops == 2
         assert s.ppr_alpha == 0.15

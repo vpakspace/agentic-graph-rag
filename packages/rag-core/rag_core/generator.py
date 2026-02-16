@@ -43,9 +43,10 @@ def generate_answer(
     context = "\n\n".join(context_chunks)
 
     system_prompt = (
-        "You are a precise Q&A assistant. Answer ONLY based on the provided context. "
-        "If the context doesn't contain enough information, say so. "
-        "Always cite which chunk(s) your answer is based on."
+        "You are a knowledgeable Q&A assistant. Synthesize information from ALL provided "
+        "context chunks to give a comprehensive answer. Combine facts from different chunks "
+        "when needed. If some details are missing, answer with what IS available rather than "
+        "refusing. Cite chunk numbers used."
     )
 
     user_prompt = f"Query: {query}\n\nContext:\n{context}\n\nPlease provide an answer based on the above context."
@@ -64,10 +65,13 @@ def generate_answer(
         answer_text = response.choices[0].message.content or ""
         logger.info("Generated answer: %s", answer_text[:100])
 
+        avg_score = sum(r.score for r in results) / len(results)
+        confidence = min(1.0, max(0.1, avg_score))
+
         return QAResult(
             answer=answer_text,
             sources=results,
-            confidence=0.5,
+            confidence=confidence,
             query=query,
         )
 

@@ -162,7 +162,7 @@ def run_benchmark(
     openai_client: OpenAI,
     modes: list[str] | None = None,
     questions: list[dict[str, Any]] | None = None,
-    lang: str = "en",
+    lang: str = "ru",
 ) -> dict[str, list[dict[str, Any]]]:
     """Run benchmark across specified modes.
 

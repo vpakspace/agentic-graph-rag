@@ -133,8 +133,9 @@ def hybrid_search(
     if top_k is None:
         top_k = cfg.retrieval.top_k_final
 
-    vector_results = vector_search(query, driver, openai_client, top_k=top_k)
-    graph_results = cypher_traverse(query, driver, openai_client, top_k=top_k)
+    cfg_r = cfg.retrieval
+    vector_results = vector_search(query, driver, openai_client, top_k=cfg_r.top_k_vector)
+    graph_results = cypher_traverse(query, driver, openai_client, top_k=cfg_r.top_k_vector)
 
     return _rrf_merge(vector_results, graph_results, top_k=top_k)
 
@@ -179,22 +180,103 @@ def _rrf_merge(
 # 5. Temporal query
 # ---------------------------------------------------------------------------
 
+_TEMPORAL_RE = None
+
+
+def _get_temporal_re():
+    """Lazy-compiled regex for temporal keywords."""
+    global _TEMPORAL_RE  # noqa: PLW0603
+    if _TEMPORAL_RE is None:
+        import re
+        _TEMPORAL_RE = re.compile(
+            r'\b('
+            r'\d{4}'                                      # years: 2020, 1995
+            r'|первый|первая|первое|первые'               # "first" (RU)
+            r'|история|исторический|эволюция|развитие'    # history/evolution (RU)
+            r'|first|history|evolution|timeline|founded'   # temporal (EN)
+            r'|начало|основан|создан|появи'               # origin (RU)
+            r')\b',
+            re.IGNORECASE,
+        )
+    return _TEMPORAL_RE
+
+
 def temporal_query(
     query: str,
     driver: Driver,
     openai_client: OpenAI,
 ) -> list[SearchResult]:
-    """Temporal-aware query using Graphiti temporal search.
+    """Temporal-aware query: filters passages by temporal keywords, ranks by similarity."""
+    from agentic_graph_rag.indexing.dual_node import PASSAGE_LABEL
 
-    Falls back to cypher_traverse for temporal context.
-    """
-    logger.info("Temporal query — using deep cypher traversal")
-    return cypher_traverse(query, driver, openai_client, max_hops=3)
+    cfg = get_settings()
+    top_k = cfg.retrieval.top_k_final
+    query_emb = _embed_query(query, openai_client)
+    temporal_re = _get_temporal_re()
+
+    with driver.session() as session:
+        result = session.run(
+            f"""
+            MATCH (pa:{PASSAGE_LABEL})
+            WHERE pa.text IS NOT NULL AND pa.text <> ''
+            RETURN pa.id AS id, pa.text AS text, pa.chunk_id AS chunk_id,
+                   pa.embedding AS embedding
+            """,
+        )
+
+        scored: list[tuple[float, dict]] = []
+        for record in result:
+            text = record["text"] or ""
+            emb = record["embedding"]
+            if emb:
+                sim = _cosine_similarity(query_emb, list(emb))
+            else:
+                sim = 0.0
+            # Temporal boost: +0.15 for passages containing temporal markers
+            if temporal_re.search(text):
+                sim += 0.15
+            scored.append((sim, {
+                "id": record["id"],
+                "text": text,
+                "chunk_id": record["chunk_id"],
+            }))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+
+    if not scored:
+        logger.info("Temporal query — no passages, falling back to vector search")
+        return vector_search(query, driver, openai_client)
+
+    top = scored[:top_k]
+    results = []
+    for rank, (sim, rec) in enumerate(top, start=1):
+        results.append(SearchResult(
+            chunk=Chunk(
+                id=rec["chunk_id"] or rec["id"] or "",
+                content=rec["text"] or "",
+            ),
+            score=sim,
+            rank=rank,
+            source="temporal",
+        ))
+
+    logger.info("Temporal query: %d passages (temporal-boosted)", len(results))
+    return results
 
 
 # ---------------------------------------------------------------------------
 # 6. Full document read
 # ---------------------------------------------------------------------------
+
+def _cosine_similarity(a: list[float], b: list[float]) -> float:
+    """Compute cosine similarity between two vectors."""
+    dot = sum(x * y for x, y in zip(a, b))
+    norm_a = sum(x * x for x in a) ** 0.5
+    norm_b = sum(x * x for x in b) ** 0.5
+    if norm_a == 0 or norm_b == 0:
+        return 0.0
+    return dot / (norm_a * norm_b)
+
 
 def full_document_read(
     query: str,
@@ -202,35 +284,52 @@ def full_document_read(
     openai_client: OpenAI,
     top_k: int | None = None,
 ) -> list[SearchResult]:
-    """Read all passage nodes — for global/overview queries."""
+    """Read passage nodes ranked by cosine similarity to query."""
     from agentic_graph_rag.indexing.dual_node import PASSAGE_LABEL
 
     cfg = get_settings()
     if top_k is None:
         top_k = cfg.retrieval.top_k_final
 
+    query_emb = _embed_query(query, openai_client)
+
     with driver.session() as session:
         result = session.run(
             f"""
             MATCH (pa:{PASSAGE_LABEL})
             WHERE pa.text IS NOT NULL AND pa.text <> ''
-            RETURN pa.id AS id, pa.text AS text, pa.chunk_id AS chunk_id
-            LIMIT $limit
+            RETURN pa.id AS id, pa.text AS text, pa.chunk_id AS chunk_id,
+                   pa.embedding AS embedding
             """,
-            limit=top_k * 3,
         )
 
-        results = []
-        for i, record in enumerate(result, start=1):
-            results.append(SearchResult(
-                chunk=Chunk(
-                    id=record["chunk_id"] or record["id"] or "",
-                    content=record["text"] or "",
-                ),
-                score=1.0 / i,
-                rank=i,
-                source="full_read",
-            ))
+        scored: list[tuple[float, dict]] = []
+        for record in result:
+            emb = record["embedding"]
+            if emb:
+                sim = _cosine_similarity(query_emb, list(emb))
+            else:
+                sim = 0.0
+            scored.append((sim, {
+                "id": record["id"],
+                "text": record["text"],
+                "chunk_id": record["chunk_id"],
+            }))
 
-    logger.info("Full document read: %d passages", len(results))
-    return results[:top_k]
+    scored.sort(key=lambda x: x[0], reverse=True)
+    top = scored[:top_k]
+
+    results = []
+    for rank, (sim, rec) in enumerate(top, start=1):
+        results.append(SearchResult(
+            chunk=Chunk(
+                id=rec["chunk_id"] or rec["id"] or "",
+                content=rec["text"] or "",
+            ),
+            score=sim,
+            rank=rank,
+            source="full_read",
+        ))
+
+    logger.info("Full document read: %d passages (ranked by similarity)", len(results))
+    return results
