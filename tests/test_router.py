@@ -41,7 +41,7 @@ class TestClassifyByPatterns:
     def test_global_query(self):
         d = classify_query_by_patterns("Show all entities in the system")
         assert d.query_type == QueryType.GLOBAL
-        assert d.suggested_tool == "full_document_read"
+        assert d.suggested_tool == "comprehensive_search"
 
     def test_global_query_ru(self):
         d = classify_query_by_patterns("Покажи все сущности")

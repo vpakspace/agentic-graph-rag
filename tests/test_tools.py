@@ -7,9 +7,11 @@ from rag_core.models import Chunk, GraphContext, SearchResult
 from agentic_graph_rag.agent.tools import (
     _cosine_similarity,
     _embed_query,
+    _generate_sub_queries,
     _graph_context_to_results,
     _rrf_merge,
     community_search,
+    comprehensive_search,
     full_document_read,
     temporal_query,
     vector_search,
@@ -284,3 +286,83 @@ class TestWrapperTools:
             results = temporal_query("when", driver, client)
             mock_vs.assert_called_once()
             assert len(results) == 2
+
+
+# ---------------------------------------------------------------------------
+# _generate_sub_queries
+# ---------------------------------------------------------------------------
+
+class TestGenerateSubQueries:
+    def test_generates_sub_queries(self):
+        client = MagicMock()
+        resp = MagicMock()
+        resp.choices = [MagicMock()]
+        resp.choices[0].message.content = "sub query 1\nsub query 2\nsub query 3"
+        client.chat.completions.create.return_value = resp
+
+        subs = _generate_sub_queries("list all features", client, "gpt-4o-mini", n=3)
+        assert len(subs) == 3
+        assert subs[0] == "sub query 1"
+
+    def test_handles_api_error(self):
+        client = MagicMock()
+        client.chat.completions.create.side_effect = RuntimeError("fail")
+        subs = _generate_sub_queries("test", client, "gpt-4o-mini")
+        assert subs == ["test"]
+
+    def test_handles_empty_response(self):
+        client = MagicMock()
+        resp = MagicMock()
+        resp.choices = [MagicMock()]
+        resp.choices[0].message.content = ""
+        client.chat.completions.create.return_value = resp
+
+        subs = _generate_sub_queries("test", client, "gpt-4o-mini")
+        assert subs == ["test"]
+
+    def test_limits_to_n(self):
+        client = MagicMock()
+        resp = MagicMock()
+        resp.choices = [MagicMock()]
+        resp.choices[0].message.content = "q1\nq2\nq3\nq4\nq5"
+        client.chat.completions.create.return_value = resp
+
+        subs = _generate_sub_queries("test", client, "gpt-4o-mini", n=2)
+        assert len(subs) == 2
+
+
+# ---------------------------------------------------------------------------
+# comprehensive_search
+# ---------------------------------------------------------------------------
+
+class TestComprehensiveSearch:
+    @patch("agentic_graph_rag.agent.tools.vector_search")
+    @patch("agentic_graph_rag.agent.tools._generate_sub_queries")
+    def test_merges_sub_query_results(self, mock_gen, mock_vs):
+        mock_gen.return_value = ["sub1", "sub2", "sub3"]
+        # Return different results for each call
+        mock_vs.side_effect = [
+            _make_results(3, source="v"),  # sub1
+            _make_results(3, source="v"),  # sub2
+            _make_results(3, source="v"),  # sub3
+            _make_results(3, source="v"),  # original query
+        ]
+
+        driver = _mock_driver()
+        client = _mock_openai_client()
+
+        results = comprehensive_search("list all features", driver, client, top_k=10)
+        assert len(results) > 0
+        assert mock_vs.call_count == 4  # 3 sub-queries + 1 original
+
+    @patch("agentic_graph_rag.agent.tools.vector_search")
+    @patch("agentic_graph_rag.agent.tools._generate_sub_queries")
+    def test_falls_back_on_empty_sub_queries(self, mock_gen, mock_vs):
+        mock_gen.return_value = []
+        mock_vs.return_value = _make_results(5, source="v")
+
+        driver = _mock_driver()
+        client = _mock_openai_client()
+
+        results = comprehensive_search("test", driver, client)
+        assert len(results) == 5

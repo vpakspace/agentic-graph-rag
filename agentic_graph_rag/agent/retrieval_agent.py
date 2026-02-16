@@ -12,12 +12,13 @@ from typing import TYPE_CHECKING
 
 from rag_core.config import get_settings
 from rag_core.generator import generate_answer
-from rag_core.models import QAResult, RouterDecision, SearchResult
-from rag_core.reflector import evaluate_relevance
+from rag_core.models import QAResult, QueryType, RouterDecision, SearchResult
+from rag_core.reflector import evaluate_completeness, evaluate_relevance, generate_retry_query
 
 from agentic_graph_rag.agent.router import classify_query
 from agentic_graph_rag.agent.tools import (
     community_search,
+    comprehensive_search,
     cypher_traverse,
     full_document_read,
     hybrid_search,
@@ -40,6 +41,7 @@ _TOOL_REGISTRY = {
     "community_search": community_search,
     "hybrid_search": hybrid_search,
     "temporal_query": temporal_query,
+    "comprehensive_search": comprehensive_search,
     "full_document_read": full_document_read,
 }
 
@@ -48,6 +50,7 @@ _ESCALATION_CHAIN = [
     "vector_search",
     "cypher_traverse",
     "hybrid_search",
+    "comprehensive_search",
     "full_document_read",
 ]
 
@@ -121,11 +124,13 @@ def self_correction_loop(
             if score >= relevance_threshold:
                 return results, attempt
 
-        # Escalate to next tool
+        # Escalate to next tool, rephrasing query first
         if attempt < max_retries:
             next_tool = _get_next_tool(tool_name, tried_tools)
             if next_tool:
-                logger.info("Escalating from '%s' to '%s'", tool_name, next_tool)
+                # Rephrase query before escalating for better coverage
+                query = generate_retry_query(query, results, openai_client=openai_client)
+                logger.info("Escalating from '%s' to '%s' (rephrased query)", tool_name, next_tool)
                 tool_name = next_tool
             else:
                 logger.info("No more tools to escalate to")
@@ -190,6 +195,19 @@ def run(
 
     # Step 3: Generate answer
     qa_result = generate_answer(query, results, openai_client=openai_client)
+
+    # Step 4: Completeness check for GLOBAL queries (max 1 retry)
+    if (
+        decision.query_type == QueryType.GLOBAL
+        and not evaluate_completeness(query, qa_result.answer, openai_client=openai_client)
+    ):
+        logger.info("Completeness check failed for GLOBAL query — retrying with comprehensive_search")
+        extra_results = comprehensive_search(query, driver, openai_client)
+        if extra_results:
+            # Merge original + extra, deduplicate
+            combined = results + [r for r in extra_results if r.chunk.id not in {sr.chunk.id for sr in results}]
+            qa_result = generate_answer(query, combined, openai_client=openai_client)
+            retries += 1
 
     # Enrich with metadata
     qa_result.retries = retries

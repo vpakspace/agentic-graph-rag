@@ -3,7 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 from rag_core.models import Chunk, SearchResult
-from rag_core.reflector import evaluate_relevance, generate_retry_query
+from rag_core.reflector import evaluate_completeness, evaluate_relevance, generate_retry_query
 
 
 def _mock_openai_response(content: str) -> MagicMock:
@@ -136,3 +136,49 @@ class TestGenerateRetryQuery:
             result = generate_retry_query("q", [])
             mock_cls.assert_called_once_with(api_key="sk-test")
             assert result == "better query"
+
+
+class TestEvaluateCompleteness:
+    def test_returns_true_when_yes(self):
+        client = MagicMock()
+        client.chat.completions.create.return_value = _mock_openai_response(
+            "YES, the answer covers all aspects."
+        )
+        assert evaluate_completeness("list all X", "Here are all X: A, B, C", openai_client=client) is True
+
+    def test_returns_false_when_no(self):
+        client = MagicMock()
+        client.chat.completions.create.return_value = _mock_openai_response(
+            "NO, the answer only mentions 2 out of 5 items."
+        )
+        assert evaluate_completeness("list all X", "Here are X: A, B", openai_client=client) is False
+
+    def test_handles_api_error(self):
+        client = MagicMock()
+        client.chat.completions.create.side_effect = RuntimeError("API error")
+        # Should return True on error to avoid extra retries
+        assert evaluate_completeness("q", "answer", openai_client=client) is True
+
+    def test_handles_empty_response(self):
+        client = MagicMock()
+        client.chat.completions.create.return_value = _mock_openai_response("")
+        # Empty response doesn't start with YES → False
+        assert evaluate_completeness("q", "answer", openai_client=client) is False
+
+    @patch("rag_core.reflector.get_settings")
+    def test_creates_client_when_none(self, mock_settings):
+        cfg = MagicMock()
+        cfg.openai.api_key = "sk-test"
+        cfg.openai.llm_model_mini = "gpt-4o-mini"
+        mock_settings.return_value = cfg
+
+        with patch("openai.OpenAI") as mock_cls:
+            mock_client = MagicMock()
+            mock_client.chat.completions.create.return_value = _mock_openai_response(
+                "YES, complete"
+            )
+            mock_cls.return_value = mock_client
+
+            result = evaluate_completeness("q", "answer")
+            mock_cls.assert_called_once_with(api_key="sk-test")
+            assert result is True

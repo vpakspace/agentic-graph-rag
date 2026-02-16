@@ -11,6 +11,7 @@ from rag_core.models import (
 )
 
 from agentic_graph_rag.agent.retrieval_agent import (
+    _ESCALATION_CHAIN,
     _TOOL_REGISTRY,
     _get_next_tool,
     run,
@@ -91,7 +92,7 @@ class TestGetNextTool:
         assert nxt is None
 
     def test_all_tried(self):
-        all_tools = {"vector_search", "cypher_traverse", "hybrid_search", "full_document_read"}
+        all_tools = {"vector_search", "cypher_traverse", "hybrid_search", "comprehensive_search", "full_document_read"}
         nxt = _get_next_tool("vector_search", all_tools)
         assert nxt is None
 
@@ -256,11 +257,12 @@ class TestRun:
         run("q", driver, openai_client=client, use_llm_router=True)
         mock_classify.assert_called_once_with("q", use_llm=True, openai_client=client, reasoning=None)
 
+    @patch("agentic_graph_rag.agent.retrieval_agent.evaluate_completeness", return_value=True)
     @patch("agentic_graph_rag.agent.retrieval_agent.generate_answer")
     @patch("agentic_graph_rag.agent.retrieval_agent.self_correction_loop")
     @patch("agentic_graph_rag.agent.retrieval_agent.classify_query")
     @patch("agentic_graph_rag.agent.retrieval_agent.get_settings")
-    def test_creates_client_when_none(self, mock_settings, mock_classify, mock_loop, mock_gen):
+    def test_creates_client_when_none(self, mock_settings, mock_classify, mock_loop, mock_gen, _mock_compl):
         cfg = MagicMock()
         cfg.openai.api_key = "key"
         mock_settings.return_value = cfg
@@ -274,3 +276,106 @@ class TestRun:
             mock_cls.return_value = MagicMock()
             run("q", driver)
             mock_cls.assert_called_once_with(api_key="key")
+
+
+# ---------------------------------------------------------------------------
+# Escalation chain structure
+# ---------------------------------------------------------------------------
+
+class TestEscalationChain:
+    def test_comprehensive_search_in_chain(self):
+        assert "comprehensive_search" in _ESCALATION_CHAIN
+        # comprehensive_search should be after hybrid_search and before full_document_read
+        idx_cs = _ESCALATION_CHAIN.index("comprehensive_search")
+        idx_hs = _ESCALATION_CHAIN.index("hybrid_search")
+        idx_fdr = _ESCALATION_CHAIN.index("full_document_read")
+        assert idx_cs > idx_hs
+        assert idx_cs < idx_fdr
+
+    def test_comprehensive_search_in_registry(self):
+        assert "comprehensive_search" in _TOOL_REGISTRY
+
+
+# ---------------------------------------------------------------------------
+# self_correction_loop with retry query
+# ---------------------------------------------------------------------------
+
+class TestRetryQuery:
+    @patch("agentic_graph_rag.agent.retrieval_agent.generate_retry_query")
+    @patch("agentic_graph_rag.agent.retrieval_agent.evaluate_relevance")
+    def test_rephrases_query_before_escalation(self, mock_eval, mock_retry):
+        mock_vs = _mock_tool(_make_results(2))
+        mock_ct = _mock_tool(_make_results(3))
+        mock_eval.side_effect = [1.0, 4.0]  # low then high
+        mock_retry.return_value = "rephrased query"
+
+        driver = MagicMock()
+        client = MagicMock()
+        decision = _make_decision()
+
+        with patch.dict(_TOOL_REGISTRY, {
+            "vector_search": mock_vs,
+            "cypher_traverse": mock_ct,
+        }):
+            out, retries = self_correction_loop(
+                "test", driver, client, decision,
+                max_retries=2, relevance_threshold=3.0,
+            )
+
+        # generate_retry_query should have been called once (before escalation)
+        mock_retry.assert_called_once()
+        # cypher_traverse should have been called with the rephrased query
+        mock_ct.assert_called_once_with("rephrased query", driver, client)
+
+
+# ---------------------------------------------------------------------------
+# Completeness check in run()
+# ---------------------------------------------------------------------------
+
+class TestCompletenessCheck:
+    @patch("agentic_graph_rag.agent.retrieval_agent.comprehensive_search")
+    @patch("agentic_graph_rag.agent.retrieval_agent.evaluate_completeness")
+    @patch("agentic_graph_rag.agent.retrieval_agent.generate_answer")
+    @patch("agentic_graph_rag.agent.retrieval_agent.self_correction_loop")
+    @patch("agentic_graph_rag.agent.retrieval_agent.classify_query")
+    def test_completeness_retry_for_global(self, mock_classify, mock_loop, mock_gen, mock_compl, mock_cs):
+        decision = _make_decision(query_type=QueryType.GLOBAL, tool="comprehensive_search")
+        mock_classify.return_value = decision
+        results = _make_results(3)
+        mock_loop.return_value = (results, 0)
+
+        # First generate returns incomplete, second returns complete
+        qa_incomplete = QAResult(answer="Partial answer", sources=results, confidence=0.7, query="list all")
+        qa_complete = QAResult(answer="Full answer: A, B, C, D", sources=results, confidence=0.9, query="list all")
+        mock_gen.side_effect = [qa_incomplete, qa_complete]
+
+        mock_compl.return_value = False  # answer is incomplete
+        mock_cs.return_value = _make_results(5)
+
+        driver = MagicMock()
+        client = MagicMock()
+
+        qa = run("list all items", driver, openai_client=client)
+
+        mock_compl.assert_called_once()
+        mock_cs.assert_called_once()
+        # generate_answer called twice: initial + after completeness retry
+        assert mock_gen.call_count == 2
+        assert qa.retries == 1
+
+    @patch("agentic_graph_rag.agent.retrieval_agent.evaluate_completeness")
+    @patch("agentic_graph_rag.agent.retrieval_agent.generate_answer")
+    @patch("agentic_graph_rag.agent.retrieval_agent.self_correction_loop")
+    @patch("agentic_graph_rag.agent.retrieval_agent.classify_query")
+    def test_no_completeness_check_for_simple(self, mock_classify, mock_loop, mock_gen, mock_compl):
+        decision = _make_decision(query_type=QueryType.SIMPLE, tool="vector_search")
+        mock_classify.return_value = decision
+        mock_loop.return_value = (_make_results(3), 0)
+        mock_gen.return_value = QAResult(answer="Answer", query="q")
+
+        driver = MagicMock()
+        client = MagicMock()
+
+        run("what is X?", driver, openai_client=client)
+        # evaluate_completeness should NOT be called for SIMPLE queries
+        mock_compl.assert_not_called()

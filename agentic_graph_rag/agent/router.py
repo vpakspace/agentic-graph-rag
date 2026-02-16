@@ -54,7 +54,7 @@ _TOOL_MAP: dict[QueryType, str] = {
     QueryType.SIMPLE: "vector_search",
     QueryType.RELATION: "cypher_traverse",
     QueryType.MULTI_HOP: "cypher_traverse",
-    QueryType.GLOBAL: "full_document_read",
+    QueryType.GLOBAL: "comprehensive_search",
     QueryType.TEMPORAL: "temporal_query",
 }
 
@@ -166,6 +166,7 @@ def classify_query_by_llm(
 _MANGLE_TOOL_TO_TYPE: dict[str, QueryType] = {
     "vector_search": QueryType.SIMPLE,
     "cypher_traverse": QueryType.RELATION,
+    "comprehensive_search": QueryType.GLOBAL,
     "full_document_read": QueryType.GLOBAL,
     "temporal_query": QueryType.TEMPORAL,
 }

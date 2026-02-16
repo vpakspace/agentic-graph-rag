@@ -38,7 +38,7 @@ class RetrievalSettings(BaseSettings):
     top_k_vector: int = 10
     top_k_final: int = 10
     vector_threshold: float = 0.5
-    max_hops: int = 2
+    max_hops: int = 3
     ppr_alpha: float = 0.15
 
     model_config = {"env_prefix": "RETRIEVAL_"}

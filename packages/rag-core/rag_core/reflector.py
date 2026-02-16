@@ -116,3 +116,42 @@ def generate_retry_query(
     except Exception as e:
         logger.error("Error generating retry query: %s", e)
         return query
+
+
+def evaluate_completeness(
+    query: str, answer: str, openai_client: OpenAI | None = None,
+) -> bool:
+    """Check whether the generated answer is complete for the query.
+
+    Designed for GLOBAL/enumeration queries where partial answers are common.
+    Returns True if the answer is considered complete.
+    """
+    cfg = get_settings()
+    if openai_client is None:
+        from openai import OpenAI
+
+        openai_client = OpenAI(api_key=cfg.openai.api_key)
+
+    prompt = (
+        "You are evaluating an answer for completeness.\n"
+        f"Query: {query}\n\n"
+        f"Answer: {answer}\n\n"
+        "Is this answer COMPLETE? Does it cover ALL aspects of the query? "
+        "Consider: does it list all items asked for? Does it acknowledge gaps?\n"
+        "Respond with ONLY 'YES' or 'NO' followed by a brief explanation."
+    )
+
+    try:
+        response = openai_client.chat.completions.create(
+            model=cfg.openai.llm_model_mini,
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.0,
+        )
+        text = (response.choices[0].message.content or "").strip().upper()
+        is_complete = text.startswith("YES")
+        logger.info("Completeness check: %s", "complete" if is_complete else "incomplete")
+        return is_complete
+
+    except Exception as e:
+        logger.error("Error evaluating completeness: %s", e)
+        return True  # assume complete on error to avoid extra retries

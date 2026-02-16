@@ -55,6 +55,18 @@ class TestGenerateAnswer:
         assert "[Chunk 2]" in user_msg
         assert "[Chunk 3]" in user_msg
 
+    def test_completeness_instruction_in_prompt(self):
+        client = MagicMock()
+        client.chat.completions.create.return_value = _mock_openai_response("answer")
+
+        results = [_make_result("text")]
+        generate_answer("list all items", results, openai_client=client)
+
+        call_args = client.chat.completions.create.call_args
+        system_msg = call_args[1]["messages"][0]["content"]
+        assert "enumeration" in system_msg.lower()
+        assert "COMPLETE list" in system_msg
+
     def test_handles_api_error(self):
         client = MagicMock()
         client.chat.completions.create.side_effect = RuntimeError("API down")

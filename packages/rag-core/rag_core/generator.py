@@ -46,7 +46,10 @@ def generate_answer(
         "You are a knowledgeable Q&A assistant. Synthesize information from ALL provided "
         "context chunks to give a comprehensive answer. Combine facts from different chunks "
         "when needed. If some details are missing, answer with what IS available rather than "
-        "refusing. Cite chunk numbers used."
+        "refusing. Cite chunk numbers used.\n"
+        "For enumeration questions (list all, name all, summarize all, every, каждый, все), "
+        "provide a COMPLETE list from the context. If the context only covers part of the "
+        "topic, explicitly state what may be missing."
     )
 
     user_prompt = f"Query: {query}\n\nContext:\n{context}\n\nPlease provide an answer based on the above context."
