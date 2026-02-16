@@ -5,7 +5,7 @@ import logging
 from pathlib import Path
 from typing import TYPE_CHECKING
 
-from pymangle.ast_nodes import Atom, Constant, TermType
+from pymangle.ast_nodes import Constant, TermType
 from pymangle.engine import eval_program
 from pymangle.external import ExternalPredicateRegistry
 from pymangle.parser import parse

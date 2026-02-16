@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from agentic_graph_rag.reasoning.reasoning_engine import ReasoningEngine
 
-
 _ROUTING_SRC = """\
 keyword(/relation, "связ").
 keyword(/relation, "connect").

@@ -264,7 +264,10 @@ with tab_search:
                     from agentic_graph_rag.agent.retrieval_agent import run as agent_run
                     reasoning = _get_reasoning_engine() if use_mangle_router else None
                     with monitor.track("agent", "agent_router"):
-                        qa = agent_run(query, driver, openai_client=client, use_llm_router=use_llm_router, reasoning=reasoning)
+                        qa = agent_run(
+                            query, driver, openai_client=client,
+                            use_llm_router=use_llm_router, reasoning=reasoning,
+                        )
                 elif mode == t("search_mode_hybrid"):
                     from rag_core.generator import generate_answer
 
@@ -566,7 +569,7 @@ with tab_reasoning:
                 mermaid_lines.append(f"    {node_id}[\"{label}\"]")
                 if idx > 0:
                     mermaid_lines.append(f"    S{idx - 1} --> {node_id}")
-            st.markdown(f"```mermaid\n" + "\n".join(mermaid_lines) + "\n```")
+            st.markdown("```mermaid\n" + "\n".join(mermaid_lines) + "\n```")
         else:
             st.info(t("reasoning_no_match"))
     except Exception as e:

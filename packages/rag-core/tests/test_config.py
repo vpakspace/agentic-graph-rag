@@ -61,7 +61,7 @@ class TestRetrievalSettings:
         s = RetrievalSettings()
         assert s.top_k_vector == 10
         assert s.top_k_final == 5
-        assert s.vector_threshold == 0.7
+        assert s.vector_threshold == 0.5
         assert s.max_hops == 2
         assert s.ppr_alpha == 0.15
 
@@ -70,7 +70,7 @@ class TestAgentSettings:
     def test_defaults(self):
         s = AgentSettings()
         assert s.max_retries == 2
-        assert s.relevance_threshold == 3.0
+        assert s.relevance_threshold == 2.0
 
 
 class TestSettings:

@@ -2,9 +2,8 @@
 from __future__ import annotations
 
 from pathlib import Path
-from unittest.mock import MagicMock
 
-from rag_core.models import QueryType, RouterDecision
+from rag_core.models import QueryType
 
 from agentic_graph_rag.agent.router import classify_query
 from agentic_graph_rag.reasoning.reasoning_engine import ReasoningEngine

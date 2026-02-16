@@ -31,6 +31,7 @@ asyncio_mode = "auto"
 [tool.ruff]
 line-length = 120
 target-version = "py312"
+exclude = ["pymangle/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]

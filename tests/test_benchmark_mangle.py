@@ -1,8 +1,6 @@
 """Tests for Mangle benchmark mode."""
 from __future__ import annotations
 
-from pathlib import Path
-
 from benchmark.runner import MODES, load_questions
 
 

@@ -3,9 +3,7 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from pymangle.ast_nodes import Constant, TermType
 from pymangle.engine import eval_program
-from pymangle.external import ExternalPredicateRegistry
 from pymangle.parser import parse
 
 _RULES_DIR = Path(__file__).parent.parent / "agentic_graph_rag" / "reasoning" / "rules"

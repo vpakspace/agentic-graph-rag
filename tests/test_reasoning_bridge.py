@@ -1,12 +1,9 @@
 """Tests for Neo4j bridge and ReasoningEngine facade."""
 from __future__ import annotations
 
-from collections.abc import Iterator
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
-import pytest
-
-from pymangle.ast_nodes import Atom, Constant, TermType
+from pymangle.ast_nodes import Constant, TermType
 from pymangle.external import ExternalPredicateRegistry
 
 
