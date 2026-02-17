@@ -6,10 +6,12 @@ Port: 8506
 
 from __future__ import annotations
 
+import os
 import tempfile
 from pathlib import Path
 from typing import Any
 
+import httpx
 import streamlit as st
 from rag_core.config import get_settings
 from rag_core.i18n import get_translator
@@ -43,6 +45,8 @@ use_mangle_router = st.sidebar.checkbox(
     "Mangle Router" if lang == "en" else "Mangle Роутер",
     value=False,
 )
+
+API_URL = os.environ.get("AGR_API_URL", "http://localhost:8507")
 
 
 # ---------------------------------------------------------------------------
@@ -254,52 +258,74 @@ with tab_search:
     query = st.text_input(t("search_input"), placeholder=t("search_placeholder"))
 
     if st.button(t("search_button"), disabled=not query):
-        try:
-            driver = _get_neo4j_driver()
-            client = _get_openai_client()
-            monitor = _get_monitor()
+        # Map UI mode to API mode
+        mode_map = {
+            t("search_mode_vector"): "vector",
+            t("search_mode_hybrid"): "hybrid",
+            t("search_mode_agent"): "agent_pattern",
+        }
+        api_mode = mode_map.get(mode, "agent_pattern")
+        if use_mangle_router:
+            api_mode = "agent_mangle"
+        elif use_llm_router:
+            api_mode = "agent_llm"
 
-            with st.spinner(t("search_thinking")):
-                if mode == t("search_mode_agent"):
+        with st.spinner(t("search_thinking")):
+            try:
+                # Try API first (thin client)
+                resp = httpx.post(
+                    f"{API_URL}/api/v1/query",
+                    json={"text": query, "mode": api_mode, "lang": lang},
+                    timeout=120.0,
+                )
+                resp.raise_for_status()
+                data = resp.json()
+
+                from rag_core.models import QAResult
+                qa = QAResult.model_validate(data)
+                st.session_state.last_qa = qa
+                st.session_state.last_trace = data.get("trace")
+
+            except (httpx.ConnectError, httpx.HTTPStatusError):
+                # Fallback to direct Python if API not available
+                st.caption("API not available — using direct mode")
+                driver = _get_neo4j_driver()
+                client = _get_openai_client()
+
+                if api_mode in ("agent_pattern", "agent_llm", "agent_mangle"):
                     from agentic_graph_rag.agent.retrieval_agent import run as agent_run
                     reasoning = _get_reasoning_engine() if use_mangle_router else None
-                    with monitor.track("agent", "agent_router"):
-                        qa = agent_run(
-                            query, driver, openai_client=client,
-                            use_llm_router=use_llm_router, reasoning=reasoning,
-                        )
-                elif mode == t("search_mode_hybrid"):
+                    qa = agent_run(
+                        query, driver, openai_client=client,
+                        use_llm_router=use_llm_router, reasoning=reasoning,
+                    )
+                elif api_mode == "hybrid":
                     from rag_core.generator import generate_answer
-
                     from agentic_graph_rag.agent.tools import hybrid_search
-                    with monitor.track("hybrid", "hybrid_search"):
-                        results = hybrid_search(query, driver, client)
-                        qa = generate_answer(query, results, client)
+                    results = hybrid_search(query, driver, client)
+                    qa = generate_answer(query, results, client)
                 else:
                     from rag_core.generator import generate_answer
-
                     from agentic_graph_rag.agent.tools import vector_search
-                    with monitor.track("simple", "vector_search"):
-                        results = vector_search(query, driver, client)
-                        qa = generate_answer(query, results, client)
+                    results = vector_search(query, driver, client)
+                    qa = generate_answer(query, results, client)
 
-            st.session_state.last_qa = qa
+                st.session_state.last_qa = qa
+                # Build trace from qa.trace if available
+                if qa.trace:
+                    st.session_state.last_trace = qa.trace.model_dump()
+                else:
+                    trace_dict: dict[str, Any] = {"query": query, "mode": mode}
+                    if qa.router_decision:
+                        trace_dict["router_step"] = {
+                            "method": "direct",
+                            "decision": qa.router_decision.model_dump(),
+                        }
+                    st.session_state.last_trace = trace_dict
 
-            # Build trace info
-            trace: dict[str, Any] = {"query": query, "mode": mode}
-            if qa.router_decision:
-                trace["router"] = {
-                    "query_type": qa.router_decision.query_type.value,
-                    "confidence": qa.router_decision.confidence,
-                    "reasoning": qa.router_decision.reasoning,
-                    "tool": qa.router_decision.suggested_tool,
-                }
-            trace["retries"] = qa.retries
-            trace["confidence"] = qa.confidence
-            trace["sources_count"] = len(qa.sources)
-            st.session_state.last_trace = trace
-
-            # Display answer
+        # Display answer
+        qa = st.session_state.last_qa
+        if qa:
             st.subheader(t("search_answer"))
             st.write(qa.answer)
 
@@ -318,8 +344,6 @@ with tab_search:
                     for i, src in enumerate(qa.sources, 1):
                         st.markdown(f"**{i}.** {src.chunk.content[:200]}...")
                         st.caption(t("search_source_score", score=src.score))
-        except Exception as e:
-            st.error(t("error", msg=str(e)))
 
 
 # ===================== TAB 3: GRAPH EXPLORER ==============================
@@ -386,28 +410,76 @@ with tab_trace:
     if trace_data is None:
         st.info(t("trace_no_data"))
     else:
-        st.subheader(t("trace_routing"))
-
-        if "router" in trace_data:
-            r = trace_data["router"]
-            col1, col2, col3 = st.columns(3)
+        # Router decision
+        if trace_data.get("router_step"):
+            st.subheader(t("trace_routing"))
+            rs = trace_data["router_step"]
+            d = rs.get("decision", {})
+            col1, col2, col3, col4 = st.columns(4)
             with col1:
-                st.metric(t("trace_query_type"), r["query_type"])
+                st.metric("Method", rs.get("method", "—"))
             with col2:
-                st.metric(t("trace_confidence"), f"{r['confidence']:.0%}")
+                st.metric(t("trace_query_type"), d.get("query_type", "—"))
             with col3:
-                st.metric(t("trace_tool"), r["tool"])
-            st.caption(f"{t('trace_reasoning')}: {r['reasoning']}")
+                st.metric(t("trace_confidence"), f"{d.get('confidence', 0):.0%}")
+            with col4:
+                st.metric(t("trace_tool"), d.get("suggested_tool", "—"))
+            if rs.get("rules_fired"):
+                st.caption(f"Rules: {', '.join(rs['rules_fired'])}")
+            st.caption(f"{t('trace_reasoning')}: {d.get('reasoning', '')}")
+            st.caption(f"Duration: {rs.get('duration_ms', 0)}ms")
 
+        # Tool steps
+        if trace_data.get("tool_steps"):
+            st.divider()
+            st.subheader("Tool Steps")
+            for i, step in enumerate(trace_data["tool_steps"], 1):
+                with st.container(border=True):
+                    c1, c2, c3, c4 = st.columns(4)
+                    with c1:
+                        st.metric(f"Step {i}", step["tool_name"])
+                    with c2:
+                        st.metric("Results", step.get("results_count", 0))
+                    with c3:
+                        score = step.get("relevance_score", 0)
+                        st.metric("Relevance", f"{score:.1f}/5.0")
+                    with c4:
+                        st.metric("Duration", f"{step.get('duration_ms', 0)}ms")
+
+        # Escalation steps
+        if trace_data.get("escalation_steps"):
+            st.divider()
+            st.subheader("Escalations")
+            for esc in trace_data["escalation_steps"]:
+                st.warning(
+                    f"**{esc['from_tool']}** → **{esc['to_tool']}**: {esc.get('reason', '')}"
+                )
+
+        # Generator step
+        if trace_data.get("generator_step"):
+            st.divider()
+            st.subheader("Generator")
+            gs = trace_data["generator_step"]
+            c1, c2, c3 = st.columns(3)
+            with c1:
+                st.metric("Model", gs.get("model", "—"))
+            with c2:
+                tokens = gs.get("prompt_tokens", 0) + gs.get("completion_tokens", 0)
+                st.metric("Tokens", tokens)
+            with c3:
+                st.metric("Confidence", f"{gs.get('confidence', 0):.0%}")
+
+        # Summary
         st.divider()
+        c1, c2 = st.columns(2)
+        with c1:
+            st.metric("Total Duration", f"{trace_data.get('total_duration_ms', 0)}ms")
+        with c2:
+            st.metric("Trace ID", trace_data.get("trace_id", "—"))
 
-        st.subheader(t("trace_correction"))
-        st.metric(t("trace_retries", count=trace_data.get("retries", 0)), trace_data.get("retries", 0))
-
-        st.divider()
-
-        st.subheader("Raw Trace")
-        st.json(trace_data)
+        # Raw JSON (expandable)
+        with st.expander("Raw Trace JSON"):
+            st.json(trace_data)
 
 
 # ===================== TAB 5: BENCHMARK ===================================
