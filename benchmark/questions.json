@@ -103,5 +103,40 @@
     "question_ru": "Какую роль играет Neo4j в пайплайне графа знаний?",
     "type": "simple",
     "keywords": ["Neo4j", "role", "pipeline", "storage"]
+  },
+  {
+    "id": 16,
+    "question": "What is the Semantic Companion Layer and what problem does it solve?",
+    "question_ru": "Что такое Semantic Companion Layer и какую проблему он решает?",
+    "type": "simple",
+    "keywords": ["Semantic Companion Layer", "MeaningHub", "northbound", "contract"]
+  },
+  {
+    "id": 17,
+    "question": "How does MeaningHub integrate SPARQL, Cypher and vector search?",
+    "question_ru": "Как MeaningHub интегрирует SPARQL, Cypher и векторный поиск?",
+    "type": "relation",
+    "keywords": ["SPARQL", "Cypher", "vector", "GraphQL", "facade"]
+  },
+  {
+    "id": 18,
+    "question": "How does the northbound-southbound architecture of MeaningHub enable agent interaction with semantic outputs?",
+    "question_ru": "Как northbound-southbound архитектура MeaningHub обеспечивает взаимодействие агентов с семантическими выходами?",
+    "type": "multi_hop",
+    "keywords": ["northbound", "southbound", "agent", "semantic", "contract", "portable"]
+  },
+  {
+    "id": 19,
+    "question": "Describe all components and layers of the MeaningHub architecture",
+    "question_ru": "Опиши все компоненты и слои архитектуры MeaningHub",
+    "type": "global",
+    "keywords": ["MeaningHub", "architecture", "layers", "components", "Semantic Companion"]
+  },
+  {
+    "id": 20,
+    "question": "How has the approach to semantic integration in AI systems evolved from simple RAG to Semantic Companion Layer?",
+    "question_ru": "Как подход к семантической интеграции в AI-системах эволюционировал от простого RAG к Semantic Companion Layer?",
+    "type": "temporal",
+    "keywords": ["evolution", "RAG", "Semantic Companion", "agentic", "progression"]
   }
 ]
