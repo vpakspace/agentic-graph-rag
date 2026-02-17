@@ -16,13 +16,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), "pymangle"))
 
 from dotenv import load_dotenv
+
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 
 from neo4j import GraphDatabase
 from openai import OpenAI
-
 from rag_core.config import get_settings
-from benchmark.runner import run_benchmark, load_questions
+
+from benchmark.runner import load_questions, run_benchmark
 
 cfg = get_settings()
 driver = GraphDatabase.driver(cfg.neo4j.uri, auth=(cfg.neo4j.user, cfg.neo4j.password))

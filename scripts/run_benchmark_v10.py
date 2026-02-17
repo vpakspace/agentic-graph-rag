@@ -12,13 +12,14 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), "pymangle"))
 
 from dotenv import load_dotenv
+
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 
 from neo4j import GraphDatabase
 from openai import OpenAI
-
 from rag_core.config import get_settings
-from benchmark.runner import run_benchmark, load_questions
+
+from benchmark.runner import load_questions, run_benchmark
 
 cfg = get_settings()
 driver = GraphDatabase.driver(cfg.neo4j.uri, auth=(cfg.neo4j.user, cfg.neo4j.password))
@@ -59,7 +60,10 @@ for mode, mode_results in results.items():
 total_passed = sum(sum(1 for r in mr if r["passed"]) for mr in results.values())
 total_all = sum(len(mr) for mr in results.values())
 v7_total = sum(sum(1 for r in mr if r["passed"]) for mr in v7.values()) if v7 else "?"
-delta_total = f"({'+' if total_passed >= v7_total else ''}{total_passed - v7_total} vs v7)" if isinstance(v7_total, int) else ""
+delta_total = (
+    f"({'+' if total_passed >= v7_total else ''}{total_passed - v7_total} vs v7)"
+    if isinstance(v7_total, int) else ""
+)
 print(f"\n  {'OVERALL':20s}: {total_passed}/{total_all} ({100*total_passed//total_all}%) {delta_total}")
 
 # Save results

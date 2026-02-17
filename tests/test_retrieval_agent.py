@@ -372,7 +372,9 @@ class TestCompletenessCheck:
     @patch("agentic_graph_rag.agent.retrieval_agent.generate_answer")
     @patch("agentic_graph_rag.agent.retrieval_agent.self_correction_loop")
     @patch("agentic_graph_rag.agent.retrieval_agent.classify_query")
-    def test_completeness_double_retry_for_global(self, mock_classify, mock_loop, mock_gen, mock_compl, mock_cs, mock_fdr):
+    def test_completeness_double_retry_for_global(
+        self, mock_classify, mock_loop, mock_gen, mock_compl, mock_cs, mock_fdr,
+    ):
         """Both comprehensive and full_document_read retries fire when answer stays incomplete."""
         decision = _make_decision(query_type=QueryType.GLOBAL, tool="comprehensive_search")
         mock_classify.return_value = decision

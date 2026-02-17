@@ -24,7 +24,6 @@ def create_app(service: PipelineService | None = None) -> FastAPI:
             # Production: create service from config
             from neo4j import GraphDatabase
             from openai import OpenAI
-
             from rag_core.config import get_settings
 
             cfg = get_settings()

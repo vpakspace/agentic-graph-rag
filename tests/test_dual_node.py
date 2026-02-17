@@ -192,7 +192,7 @@ class TestCreatePhraseRelationships:
 
     def test_skips_empty_names(self):
         driver = _mock_driver()
-        session = driver.session().__enter__()
+        driver.session().__enter__()
 
         rels = [
             Relationship(source="", target="ML", relation_type="R"),

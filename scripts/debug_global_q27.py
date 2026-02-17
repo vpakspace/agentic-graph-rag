@@ -1,18 +1,23 @@
 #!/usr/bin/env python3
 """Debug: what does comprehensive_search return for Q27?"""
-import os, sys, logging
+import logging
+import os
+import sys
+
 logging.basicConfig(level=logging.WARNING)
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), "pymangle"))
 
 from dotenv import load_dotenv
+
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 
 from neo4j import GraphDatabase
 from openai import OpenAI
 from rag_core.config import get_settings
-from agentic_graph_rag.agent.tools import comprehensive_search, full_document_read, vector_search
+
+from agentic_graph_rag.agent.tools import full_document_read
 
 cfg = get_settings()
 driver = GraphDatabase.driver(cfg.neo4j.uri, auth=(cfg.neo4j.user, cfg.neo4j.password))

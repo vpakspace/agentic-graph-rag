@@ -8,7 +8,6 @@ from rag_core.models import (
     QueryType,
     RouterDecision,
     SearchResult,
-    ToolStep,
 )
 
 

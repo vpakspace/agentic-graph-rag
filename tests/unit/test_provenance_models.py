@@ -1,13 +1,14 @@
 """Tests for provenance models."""
 import json
+
 from rag_core.models import (
     EscalationStep,
     GeneratorStep,
     PipelineTrace,
     QAResult,
+    QueryType,
     RouterDecision,
     RouterStep,
-    QueryType,
     ToolStep,
 )
 

@@ -302,11 +302,13 @@ with tab_search:
                     )
                 elif api_mode == "hybrid":
                     from rag_core.generator import generate_answer
+
                     from agentic_graph_rag.agent.tools import hybrid_search
                     results = hybrid_search(query, driver, client)
                     qa = generate_answer(query, results, client)
                 else:
                     from rag_core.generator import generate_answer
+
                     from agentic_graph_rag.agent.tools import vector_search
                     results = vector_search(query, driver, client)
                     qa = generate_answer(query, results, client)

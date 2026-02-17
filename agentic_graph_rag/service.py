@@ -9,8 +9,9 @@ import logging
 from collections import OrderedDict
 from typing import TYPE_CHECKING
 
-from agentic_graph_rag.agent.retrieval_agent import run as agent_run
 from rag_core.models import PipelineTrace, QAResult
+
+from agentic_graph_rag.agent.retrieval_agent import run as agent_run
 
 if TYPE_CHECKING:
     from neo4j import Driver

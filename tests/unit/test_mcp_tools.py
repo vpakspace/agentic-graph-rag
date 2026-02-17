@@ -2,8 +2,10 @@
 from unittest.mock import MagicMock
 
 from rag_core.models import (
-    Chunk, PipelineTrace, QAResult, QueryType,
-    RouterDecision, RouterStep, SearchResult, ToolStep,
+    Chunk,
+    PipelineTrace,
+    QAResult,
+    SearchResult,
 )
 
 

@@ -1,7 +1,7 @@
 """Tests for PipelineService."""
 from unittest.mock import MagicMock, patch
 
-from rag_core.models import QAResult, Chunk, SearchResult
+from rag_core.models import Chunk, QAResult, SearchResult
 
 
 def _mock_qa():

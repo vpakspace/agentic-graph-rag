@@ -35,3 +35,9 @@ exclude = ["pymangle/"]
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "W"]
+
+[tool.ruff.lint.per-file-ignores]
+"ui/*" = ["E402"]
+"scripts/*" = ["E402"]
+"benchmark/*" = ["E402"]
+"run_api.py" = ["E402"]

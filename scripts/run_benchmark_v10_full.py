@@ -12,20 +12,23 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(__file__)))
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.dirname(__file__)), "pymangle"))
 
 from dotenv import load_dotenv
+
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 
 from neo4j import GraphDatabase
 from openai import OpenAI
-
 from rag_core.config import get_settings
-from benchmark.runner import run_benchmark, load_questions
+
+from benchmark.runner import load_questions, run_benchmark
 
 cfg = get_settings()
 driver = GraphDatabase.driver(cfg.neo4j.uri, auth=(cfg.neo4j.user, cfg.neo4j.password))
 openai_client = OpenAI(api_key=cfg.openai.api_key)
 
 questions = load_questions()
-print(f"Loaded {len(questions)} questions (Doc1: {sum(1 for q in questions if q['id'] <= 15)}, Doc2: {sum(1 for q in questions if q['id'] > 15)})")
+doc1 = sum(1 for q in questions if q['id'] <= 15)
+doc2 = sum(1 for q in questions if q['id'] > 15)
+print(f"Loaded {len(questions)} questions (Doc1: {doc1}, Doc2: {doc2})")
 
 modes = ["vector", "cypher", "hybrid", "agent_pattern", "agent_llm", "agent_mangle"]
 results = run_benchmark(driver, openai_client, modes=modes, questions=questions, lang="ru")
@@ -93,7 +96,7 @@ for mode, mode_results in results.items():
         if r["passed"]:
             type_stats[qtype]["passed"] += 1
 
-print(f"\n  By question type:")
+print("\n  By question type:")
 for qtype, stats in sorted(type_stats.items()):
     print(f"    {qtype:12s}: {stats['passed']}/{stats['total']} ({100*stats['passed']//stats['total']}%)")
 

@@ -7,8 +7,14 @@ import pytest
 @pytest.fixture
 def mock_service():
     from rag_core.models import (
-        Chunk, PipelineTrace, QAResult, QueryType,
-        RouterDecision, RouterStep, SearchResult, ToolStep,
+        Chunk,
+        PipelineTrace,
+        QAResult,
+        QueryType,
+        RouterDecision,
+        RouterStep,
+        SearchResult,
+        ToolStep,
     )
 
     svc = MagicMock()
