@@ -195,4 +195,6 @@ class QAResult(BaseModel):
     retries: int = 0
     router_decision: RouterDecision | None = None
     graph_context: GraphContext | None = None
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
     trace: PipelineTrace | None = None  # v6 provenance

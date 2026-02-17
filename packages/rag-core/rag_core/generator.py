@@ -66,6 +66,8 @@ def generate_answer(
         )
 
         answer_text = response.choices[0].message.content or ""
+        prompt_tokens = getattr(response.usage, "prompt_tokens", 0) or 0
+        completion_tokens = getattr(response.usage, "completion_tokens", 0) or 0
         logger.info("Generated answer: %s", answer_text[:100])
 
         avg_score = sum(r.score for r in results) / len(results)
@@ -76,6 +78,8 @@ def generate_answer(
             sources=results,
             confidence=confidence,
             query=query,
+            prompt_tokens=prompt_tokens,
+            completion_tokens=completion_tokens,
         )
 
     except Exception as e:
