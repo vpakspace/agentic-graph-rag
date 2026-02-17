@@ -1,7 +1,7 @@
 """Tests for benchmark.runner and benchmark.compare."""
 
 from benchmark.compare import accuracy_by_type, compare_modes, compute_metrics
-from benchmark.runner import MODES, load_questions
+from benchmark.runner import MODES, _is_global_query, load_questions
 
 # ---------------------------------------------------------------------------
 # load_questions
@@ -10,7 +10,7 @@ from benchmark.runner import MODES, load_questions
 class TestLoadQuestions:
     def test_loads_all(self):
         qs = load_questions()
-        assert len(qs) == 20
+        assert len(qs) == 30
 
     def test_has_required_fields(self):
         qs = load_questions()
@@ -24,6 +24,31 @@ class TestLoadQuestions:
         qs = load_questions()
         types = {q["type"] for q in qs}
         assert types == {"simple", "relation", "multi_hop", "global", "temporal"}
+
+    def test_doc1_and_doc2_present(self):
+        qs = load_questions()
+        doc1 = [q for q in qs if q["id"] <= 15]
+        doc2 = [q for q in qs if q["id"] > 15]
+        assert len(doc1) == 15
+        assert len(doc2) == 15
+
+
+class TestIsGlobalQuery:
+    def test_russian_all(self):
+        assert _is_global_query("Перечисли все компоненты архитектуры")
+        assert _is_global_query("Опиши все слои MeaningHub")
+        assert _is_global_query("Резюмируй все методы интеграции")
+        assert _is_global_query("Дай обзор хранения данных")
+
+    def test_english_all(self):
+        assert _is_global_query("List all components of the architecture")
+        assert _is_global_query("Describe all layers of MeaningHub")
+        assert _is_global_query("Summarize all methods")
+
+    def test_non_global(self):
+        assert not _is_global_query("Что такое онтология?")
+        assert not _is_global_query("How does Neo4j work?")
+        assert not _is_global_query("When was GraphRAG introduced?")
 
 
 # ---------------------------------------------------------------------------

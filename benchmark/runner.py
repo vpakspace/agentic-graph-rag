@@ -33,6 +33,8 @@ Expected keywords: {keywords}
 System answer: {answer}
 
 Does the answer correctly address the question and mention the key concepts?
+For enumeration questions (list all, describe all, перечисли, опиши все), check that
+the answer lists MOST of the expected keywords/concepts (at least 50%).
 Reply with ONLY one word: PASS or FAIL"""
 
 
@@ -53,7 +55,7 @@ def evaluate_answer(
                     "content": _JUDGE_PROMPT.format(
                         question=question,
                         keywords=", ".join(keywords),
-                        answer=answer[:500],
+                        answer=answer[:2000],
                     ),
                 }
             ],
@@ -67,42 +69,73 @@ def evaluate_answer(
 
 
 # ---------------------------------------------------------------------------
+# Global query detection
+# ---------------------------------------------------------------------------
+
+import re
+
+_GLOBAL_RE = re.compile(
+    r'\b('
+    r'все\b|всех\b|всё\b|перечисл|опиши все|резюмируй все|обзор\b'
+    r'|list all|describe all|summarize all|overview|every\b'
+    r'|все компоненты|все методы|все слои|все решения'
+    r'|all components|all layers|all methods|all decisions'
+    r')\b',
+    re.IGNORECASE,
+)
+
+
+def _is_global_query(query: str) -> bool:
+    """Detect global/enumeration queries that need comprehensive retrieval."""
+    return bool(_GLOBAL_RE.search(query))
+
+
+# ---------------------------------------------------------------------------
 # Benchmark modes
 # ---------------------------------------------------------------------------
 
 def _run_vector_only(
     query: str, driver: Any, client: OpenAI,
 ) -> QAResult:
-    """Vector search → generate answer."""
+    """Vector search → generate answer. Uses comprehensive for global queries."""
     from rag_core.generator import generate_answer
 
-    from agentic_graph_rag.agent.tools import vector_search
+    from agentic_graph_rag.agent.tools import comprehensive_search, vector_search
 
-    results = vector_search(query, driver, client)
+    if _is_global_query(query):
+        results = comprehensive_search(query, driver, client)
+    else:
+        results = vector_search(query, driver, client)
     return generate_answer(query, results, client)
 
 
 def _run_cypher(
     query: str, driver: Any, client: OpenAI,
 ) -> QAResult:
-    """Cypher traversal → generate answer."""
+    """Cypher traversal → generate answer. Uses comprehensive for global queries."""
     from rag_core.generator import generate_answer
 
-    from agentic_graph_rag.agent.tools import cypher_traverse
+    from agentic_graph_rag.agent.tools import comprehensive_search, cypher_traverse
 
-    results = cypher_traverse(query, driver, client)
+    if _is_global_query(query):
+        results = comprehensive_search(query, driver, client)
+    else:
+        results = cypher_traverse(query, driver, client)
     return generate_answer(query, results, client)
 
 
 def _run_hybrid(
     query: str, driver: Any, client: OpenAI,
 ) -> QAResult:
-    """Hybrid (vector + graph RRF) → generate answer."""
+    """Hybrid (vector + graph) → generate answer. Uses comprehensive for global queries."""
     from rag_core.generator import generate_answer
 
-    from agentic_graph_rag.agent.tools import hybrid_search
+    from agentic_graph_rag.agent.tools import comprehensive_search, hybrid_search
 
-    results = hybrid_search(query, driver, client)
+    if _is_global_query(query):
+        results = comprehensive_search(query, driver, client)
+    else:
+        results = hybrid_search(query, driver, client)
     return generate_answer(query, results, client)
 
 

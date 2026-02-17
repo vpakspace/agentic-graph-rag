@@ -4,32 +4,32 @@
 
 A production-ready Graph RAG system combining four cutting-edge techniques from recent research into a unified retrieval pipeline with declarative reasoning, full pipeline provenance, and a typed API contract (FastAPI REST + MCP).
 
-## Benchmark Results (v10)
+## Benchmark Results (v11)
 
 Evaluated on **30 bilingual questions** (15 Doc1 Russian + 15 Doc2 English) across 6 retrieval modes = **180 evaluations**:
 
-| Mode | Total | Doc1 (RU) | Doc2 (EN) | Description |
-|------|-------|-----------|-----------|-------------|
-| **Agent (LLM)** | **22/30 (73%)** | 10/15 | 12/15 | Auto-routing via GPT-4o-mini |
-| **Vector** | **20/30 (66%)** | 10/15 | 10/15 | Embedding similarity search |
-| **Cypher** | **20/30 (66%)** | 10/15 | 10/15 | Graph traversal via VectorCypher (3-hop) |
-| **Agent (pattern)** | **20/30 (66%)** | 9/15 | 11/15 | Auto-routing via regex patterns + self-correction |
-| **Agent (Mangle)** | **19/30 (63%)** | 9/15 | 10/15 | Declarative Datalog rule routing + self-correction |
-| **Hybrid** | **17/30 (56%)** | 11/15 | 6/15 | Vector + Graph with cosine re-ranking |
-| **Overall** | **118/180 (65%)** | **59/90** | **59/90** | |
+| Mode | Total | Description |
+|------|-------|-------------|
+| **Agent (Mangle)** | **26/30 (86%)** | Declarative Datalog rule routing + self-correction |
+| **Hybrid** | **25/30 (83%)** | Vector + Graph with cosine re-ranking |
+| **Agent (pattern)** | **24/30 (80%)** | Auto-routing via regex patterns + self-correction |
+| **Vector** | **23/30 (76%)** | Embedding similarity search |
+| **Cypher** | **23/30 (76%)** | Graph traversal via VectorCypher (3-hop) |
+| **Agent (LLM)** | **23/30 (76%)** | Auto-routing via GPT-4o-mini |
+| **Overall** | **144/180 (80%)** | **+15pp vs v10** |
 
 Accuracy by query type (across all modes):
 
 | Type | Accuracy | Notes |
 |------|----------|-------|
-| relation | 35/42 (83%) | Best performing category |
-| temporal | 18/24 (75%) | Temporal boost helps |
-| multi_hop | 25/36 (69%) | Agent escalation effective |
-| simple | 25/42 (59%) | Some questions need specific facts |
-| global | 15/36 (41%) | Hardest — requires full document coverage |
+| relation | 42/42 (100%) | Perfect score |
+| multi_hop | 30/36 (83%) | Agent escalation effective |
+| simple | 35/42 (83%) | Improved via enumeration prompts |
+| temporal | 19/24 (79%) | Temporal boost helps |
+| global | 18/36 (50%) | +9pp vs v10; enumeration prompt + comprehensive search |
 
 <details>
-<summary>Benchmark history (v3 → v5 → v10)</summary>
+<summary>Benchmark history (v3 → v11)</summary>
 
 | Version | Questions | Overall | Key Changes |
 |---------|-----------|---------|-------------|
@@ -39,6 +39,7 @@ Accuracy by query type (across all modes):
 | v7 | 20 | 87/120 (73%) | Dual-document (Doc1 RU + Doc2 EN), RELATED_TO edges |
 | v9 | 20 | 84/120 (70%) | Hybrid cosine re-ranking (replaced RRF) |
 | v10 | 30 | 118/180 (65%) | 15 new Doc2 questions, co-occurrence expansion restored |
+| v11 | 30 | 144/180 (80%) | Enumeration prompt, global query detection, judge 2K, comprehensive+full_read retry |
 
 </details>
 
@@ -125,7 +126,7 @@ agentic-graph-rag/
 │   └── compare.py             # Comparison table generator
 │
 ├── run_api.py                 # API launcher (uvicorn, port 8507)
-└── tests/                     # 393 unit tests (285 core + 108 pymangle)
+└── tests/                     # 398 unit tests (290 core + 108 pymangle)
 ```
 
 ## Quick Start

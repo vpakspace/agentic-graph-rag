@@ -420,23 +420,28 @@ def comprehensive_search(
     openai_client: OpenAI,
     top_k: int | None = None,
 ) -> list[SearchResult]:
-    """Comprehensive retrieval: LLM generates sub-queries, each → vector search, merge via RRF.
+    """Comprehensive retrieval: LLM generates sub-queries + keyword extraction,
+    each → vector search, merge via RRF. Also includes full_document_read passages.
 
     Designed for GLOBAL queries ("list all", "summarize all") where a single
     top-k pass misses components.
     """
     cfg = get_settings()
     if top_k is None:
-        top_k = 15  # larger than default for comprehensive coverage
+        top_k = 25  # large for comprehensive coverage
 
-    # Generate sub-queries via LLM
-    sub_queries = _generate_sub_queries(query, openai_client, cfg.openai.llm_model_mini)
+    # Generate sub-queries via LLM (5 diverse angles)
+    sub_queries = _generate_sub_queries(query, openai_client, cfg.openai.llm_model_mini, n=5)
 
     # Fan-out: run vector search for each sub-query
     all_results: list[list[SearchResult]] = []
     for sq in sub_queries:
         results = vector_search(sq, driver, openai_client, top_k=cfg.retrieval.top_k_vector)
         all_results.append(results)
+
+    # Also add full_document_read for broad coverage
+    full_results = full_document_read(query, driver, openai_client, top_k=20)
+    all_results.append(full_results)
 
     # Merge all result lists via cascading RRF
     if not all_results:
@@ -450,18 +455,21 @@ def comprehensive_search(
     original_results = vector_search(query, driver, openai_client, top_k=cfg.retrieval.top_k_vector)
     merged = _rrf_merge(merged, original_results, top_k=top_k)
 
-    logger.info("Comprehensive search: %d results from %d sub-queries", len(merged), len(sub_queries))
+    logger.info("Comprehensive search: %d results from %d sub-queries + full_read", len(merged), len(sub_queries))
     return merged
 
 
 def _generate_sub_queries(
-    query: str, openai_client: OpenAI, model: str, n: int = 3,
+    query: str, openai_client: OpenAI, model: str, n: int = 5,
 ) -> list[str]:
     """Generate N sub-queries from original query to improve coverage."""
     prompt = (
-        f"You are a search query decomposer. Given this query, generate exactly {n} "
-        f"different search sub-queries that together cover ALL aspects of the original question. "
-        f"Each sub-query should focus on a different aspect or angle.\n\n"
+        f"You are a search query decomposer for a RAG system. "
+        f"Given this query, generate exactly {n} different search sub-queries "
+        f"that together cover ALL aspects of the original question. "
+        f"Each sub-query should focus on a DIFFERENT section, component, or angle.\n"
+        f"For enumeration queries (list all, describe all), "
+        f"each sub-query should target a DIFFERENT item from the expected list.\n\n"
         f"Original query: {query}\n\n"
         f"Return ONLY the {n} sub-queries, one per line, no numbering or bullets."
     )

@@ -253,18 +253,29 @@ def run(
     # Step 3: Generate answer
     qa_result = generate_answer(query, results, openai_client=openai_client)
 
-    # Step 4: Completeness check for GLOBAL queries (max 1 retry)
-    if (
-        decision.query_type == QueryType.GLOBAL
-        and not evaluate_completeness(query, qa_result.answer, openai_client=openai_client)
-    ):
-        logger.info("Completeness check failed for GLOBAL query — retrying with comprehensive_search")
-        extra_results = comprehensive_search(query, driver, openai_client)
-        if extra_results:
-            # Merge original + extra, deduplicate
-            combined = results + [r for r in extra_results if r.chunk.id not in {sr.chunk.id for sr in results}]
-            qa_result = generate_answer(query, combined, openai_client=openai_client)
-            retries += 1
+    # Step 4: Completeness check for GLOBAL queries (multi-step retry)
+    if decision.query_type == QueryType.GLOBAL:
+        existing_ids = {sr.chunk.id for sr in results if sr.chunk.id}
+
+        # Retry 1: comprehensive_search (multi-query fan-out + full_read)
+        if not evaluate_completeness(query, qa_result.answer, openai_client=openai_client):
+            logger.info("Completeness check failed for GLOBAL query — retrying with comprehensive_search")
+            extra_results = comprehensive_search(query, driver, openai_client)
+            if extra_results:
+                combined = results + [r for r in extra_results if r.chunk.id not in existing_ids]
+                existing_ids.update(r.chunk.id for r in extra_results if r.chunk.id)
+                qa_result = generate_answer(query, combined, openai_client=openai_client)
+                results = combined
+                retries += 1
+
+            # Retry 2: full_document_read with large top_k if still incomplete
+            if not evaluate_completeness(query, qa_result.answer, openai_client=openai_client):
+                logger.info("Still incomplete after comprehensive — retrying with full_document_read(top_k=30)")
+                full_results = full_document_read(query, driver, openai_client, top_k=30)
+                if full_results:
+                    combined = results + [r for r in full_results if r.chunk.id not in existing_ids]
+                    qa_result = generate_answer(query, combined, openai_client=openai_client)
+                    retries += 1
 
     # Build generator step
     trace.generator_step = GeneratorStep(

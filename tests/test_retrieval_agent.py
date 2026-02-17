@@ -333,35 +333,71 @@ class TestRetryQuery:
 # ---------------------------------------------------------------------------
 
 class TestCompletenessCheck:
+    @patch("agentic_graph_rag.agent.retrieval_agent.full_document_read")
     @patch("agentic_graph_rag.agent.retrieval_agent.comprehensive_search")
     @patch("agentic_graph_rag.agent.retrieval_agent.evaluate_completeness")
     @patch("agentic_graph_rag.agent.retrieval_agent.generate_answer")
     @patch("agentic_graph_rag.agent.retrieval_agent.self_correction_loop")
     @patch("agentic_graph_rag.agent.retrieval_agent.classify_query")
-    def test_completeness_retry_for_global(self, mock_classify, mock_loop, mock_gen, mock_compl, mock_cs):
+    def test_completeness_retry_for_global(self, mock_classify, mock_loop, mock_gen, mock_compl, mock_cs, mock_fdr):
         decision = _make_decision(query_type=QueryType.GLOBAL, tool="comprehensive_search")
         mock_classify.return_value = decision
         results = _make_results(3)
         mock_loop.return_value = (results, 0)
 
-        # First generate returns incomplete, second returns complete
+        # First generate returns incomplete, second (after comprehensive) returns complete
         qa_incomplete = QAResult(answer="Partial answer", sources=results, confidence=0.7, query="list all")
         qa_complete = QAResult(answer="Full answer: A, B, C, D", sources=results, confidence=0.9, query="list all")
         mock_gen.side_effect = [qa_incomplete, qa_complete]
 
-        mock_compl.return_value = False  # answer is incomplete
+        # First completeness check fails, second succeeds
+        mock_compl.side_effect = [False, True]
         mock_cs.return_value = _make_results(5)
+        mock_fdr.return_value = _make_results(5)
 
         driver = MagicMock()
         client = MagicMock()
 
         qa = run("list all items", driver, openai_client=client)
 
-        mock_compl.assert_called_once()
+        assert mock_compl.call_count == 2  # checked twice: before and after comprehensive
         mock_cs.assert_called_once()
-        # generate_answer called twice: initial + after completeness retry
+        mock_fdr.assert_not_called()  # second retry not needed since completeness passed
         assert mock_gen.call_count == 2
         assert qa.retries == 1
+
+    @patch("agentic_graph_rag.agent.retrieval_agent.full_document_read")
+    @patch("agentic_graph_rag.agent.retrieval_agent.comprehensive_search")
+    @patch("agentic_graph_rag.agent.retrieval_agent.evaluate_completeness")
+    @patch("agentic_graph_rag.agent.retrieval_agent.generate_answer")
+    @patch("agentic_graph_rag.agent.retrieval_agent.self_correction_loop")
+    @patch("agentic_graph_rag.agent.retrieval_agent.classify_query")
+    def test_completeness_double_retry_for_global(self, mock_classify, mock_loop, mock_gen, mock_compl, mock_cs, mock_fdr):
+        """Both comprehensive and full_document_read retries fire when answer stays incomplete."""
+        decision = _make_decision(query_type=QueryType.GLOBAL, tool="comprehensive_search")
+        mock_classify.return_value = decision
+        results = _make_results(3)
+        mock_loop.return_value = (results, 0)
+
+        qa1 = QAResult(answer="Partial", sources=results, confidence=0.5, query="list all")
+        qa2 = QAResult(answer="Still partial", sources=results, confidence=0.6, query="list all")
+        qa3 = QAResult(answer="Full answer", sources=results, confidence=0.9, query="list all")
+        mock_gen.side_effect = [qa1, qa2, qa3]
+
+        mock_compl.return_value = False  # always incomplete
+        mock_cs.return_value = _make_results(5)
+        mock_fdr.return_value = _make_results(5)
+
+        driver = MagicMock()
+        client = MagicMock()
+
+        qa = run("list all items", driver, openai_client=client)
+
+        assert mock_compl.call_count == 2  # checked before comprehensive + before full_read
+        mock_cs.assert_called_once()
+        mock_fdr.assert_called_once()
+        assert mock_gen.call_count == 3  # initial + after comprehensive + after full_read
+        assert qa.retries == 2
 
     @patch("agentic_graph_rag.agent.retrieval_agent.evaluate_completeness")
     @patch("agentic_graph_rag.agent.retrieval_agent.generate_answer")

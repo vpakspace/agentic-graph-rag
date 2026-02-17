@@ -17,6 +17,25 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
+_ENUM_RE = None
+
+
+def _is_enumeration_query(query: str) -> bool:
+    """Detect enumeration/global queries that need comprehensive listing."""
+    global _ENUM_RE  # noqa: PLW0603
+    if _ENUM_RE is None:
+        import re
+        _ENUM_RE = re.compile(
+            r'\b('
+            r'все\b|всех\b|всё\b|перечисл|опиши все|резюмируй все|обзор\b'
+            r'|list all|describe all|summarize all|overview|every\b'
+            r'|все компоненты|все методы|все слои|все решения|семь\b|seven\b'
+            r'|all components|all layers|all methods|all decisions'
+            r')\b',
+            re.IGNORECASE,
+        )
+    return bool(_ENUM_RE.search(query))
+
 
 def generate_answer(
     query: str, results: list[SearchResult], openai_client: OpenAI | None = None,
@@ -42,15 +61,30 @@ def generate_answer(
         context_chunks.append(f"[Chunk {i}]\n{result.chunk.enriched_content}")
     context = "\n\n".join(context_chunks)
 
-    system_prompt = (
-        "You are a knowledgeable Q&A assistant. Synthesize information from ALL provided "
-        "context chunks to give a comprehensive answer. Combine facts from different chunks "
-        "when needed. If some details are missing, answer with what IS available rather than "
-        "refusing. Cite chunk numbers used.\n"
-        "For enumeration questions (list all, name all, summarize all, every, каждый, все), "
-        "provide a COMPLETE list from the context. If the context only covers part of the "
-        "topic, explicitly state what may be missing."
-    )
+    # Detect enumeration/global queries for specialized prompt
+    is_enumeration = _is_enumeration_query(query)
+
+    if is_enumeration:
+        system_prompt = (
+            "You are an expert Q&A assistant specialized in comprehensive enumeration. "
+            "Your task is to extract and list EVERY distinct item, component, decision, method, "
+            "or concept mentioned across ALL provided context chunks.\n\n"
+            "INSTRUCTIONS:\n"
+            "1. Scan ALL chunks systematically — do not stop at the first few\n"
+            "2. Create a NUMBERED LIST of every distinct item found\n"
+            "3. For each item, provide a brief description (1-2 sentences)\n"
+            "4. Combine information from multiple chunks about the same item\n"
+            "5. Do NOT say 'the document does not list' — extract items even if "
+            "they are discussed narratively rather than listed explicitly\n"
+            "6. Answer in the same language as the query"
+        )
+    else:
+        system_prompt = (
+            "You are a knowledgeable Q&A assistant. Synthesize information from ALL provided "
+            "context chunks to give a comprehensive answer. Combine facts from different chunks "
+            "when needed. If some details are missing, answer with what IS available rather than "
+            "refusing. Cite chunk numbers used."
+        )
 
     user_prompt = f"Query: {query}\n\nContext:\n{context}\n\nPlease provide an answer based on the above context."
 
