@@ -1,8 +1,8 @@
 # Agentic Graph RAG
 
-**Skeleton Indexing + VectorCypher + Agentic Router with Self-Correction + Mangle Reasoning**
+**Skeleton Indexing + VectorCypher + Agentic Router with Self-Correction + Mangle Reasoning + Typed API**
 
-A production-ready Graph RAG system combining four cutting-edge techniques from recent research into a unified retrieval pipeline with declarative reasoning.
+A production-ready Graph RAG system combining four cutting-edge techniques from recent research into a unified retrieval pipeline with declarative reasoning, full pipeline provenance, and a typed API contract (FastAPI REST + MCP).
 
 ## Benchmark Results (v5)
 
@@ -93,28 +93,36 @@ agentic-graph-rag/
 │   │   └── vector_cypher.py   # Vector entry -> Cypher traversal -> context
 │   ├── agent/
 │   │   ├── router.py          # Query classifier (pattern + LLM + Mangle)
-│   │   ├── retrieval_agent.py # Orchestrator + self-correction loop
+│   │   ├── retrieval_agent.py # Orchestrator + self-correction loop + provenance
 │   │   └── tools.py           # 7 tools: vector, cypher, community, hybrid, temporal, full_read, comprehensive
 │   ├── generation/
 │   │   └── graph_verifier.py  # Contradiction detection + claim verification
 │   ├── reasoning/
 │   │   ├── reasoning_engine.py # PyMangle Datalog engine wrapper
 │   │   └── rules/             # Mangle rules: routing.mg, access.mg, graph.mg
-│   └── optimization/
-│       ├── cache.py           # LRU SubgraphCache + CommunityCache
-│       └── monitor.py         # QueryMonitor + PageRank tuning suggestions
+│   ├── optimization/
+│   │   ├── cache.py           # LRU SubgraphCache + CommunityCache
+│   │   └── monitor.py         # QueryMonitor + PageRank tuning suggestions
+│   └── service.py             # PipelineService — typed internal contract
+│
+├── api/                       # v6: Typed API contract
+│   ├── app.py                 # FastAPI factory with lifespan
+│   ├── routes.py              # REST endpoints (query, trace, health, graph_stats)
+│   ├── deps.py                # Dependency injection (PipelineService singleton)
+│   └── mcp_server.py          # MCP tools (resolve_intent, search_graph, explain_trace)
 │
 ├── pymangle/                  # PyMangle Datalog engine (~5K lines)
 │
 ├── ui/
-│   └── streamlit_app.py       # 7-tab Streamlit UI (port 8506)
+│   └── streamlit_app.py       # 7-tab Streamlit UI (port 8506, httpx thin client)
 │
 ├── benchmark/
 │   ├── questions.json         # 15 test questions (5 types, EN/RU)
 │   ├── runner.py              # 6-mode benchmark runner
 │   └── compare.py             # Comparison table generator
 │
-└── tests/                     # 398 unit tests
+├── run_api.py                 # API launcher (uvicorn, port 8507)
+└── tests/                     # 377 unit tests (269 core + 108 pymangle)
 ```
 
 ## Quick Start
@@ -154,12 +162,33 @@ docker run -d \
 ### Run Tests
 
 ```bash
-pytest -x -q  # 398 tests, ~2 seconds
+PYTHONPATH=.:pymangle pytest tests/ pymangle/ -x -q  # 377 tests, ~4 seconds
 ```
+
+### Run API Server (v6)
+
+```bash
+PYTHONPATH=.:pymangle python run_api.py  # http://localhost:8507
+```
+
+REST endpoints:
+- `POST /api/v1/query` — Query the pipeline (returns answer + trace)
+- `GET /api/v1/trace/{id}` — Retrieve a pipeline trace by ID
+- `GET /api/v1/health` — Health check (Neo4j connectivity)
+- `GET /api/v1/graph/stats` — Graph node/edge statistics
+
+MCP tools (SSE at `/mcp`):
+- `resolve_intent` — Classify query type and select tool
+- `search_graph` — Execute full pipeline search
+- `explain_trace` — Explain a pipeline trace
 
 ### Run Streamlit UI
 
 ```bash
+# With API backend (recommended):
+AGR_API_URL=http://localhost:8507 PYTHONPATH=.:pymangle streamlit run ui/streamlit_app.py --server.port 8506
+
+# Standalone (direct Python, no API needed):
 PYTHONPATH=.:pymangle streamlit run ui/streamlit_app.py --server.port 8506
 ```
 
@@ -184,6 +213,25 @@ print(compare_modes(results))
 | **Agent (pattern)** | Auto-routing via regex patterns | General use (fast) |
 | **Agent (LLM)** | Auto-routing via GPT-4o-mini | General use (accurate) |
 | **Agent (Mangle)** | Auto-routing via Datalog rules | General use (deterministic) |
+
+## Pipeline Provenance (v6)
+
+Every query produces a `PipelineTrace` — a structured record of the full pipeline execution:
+
+```json
+{
+  "trace_id": "tr_abc123def456",
+  "timestamp": "2026-02-17T12:00:00Z",
+  "query": "Какие методы используются?",
+  "router_step": {"method": "mangle", "decision": {"query_type": "simple", "suggested_tool": "vector_search"}},
+  "tool_steps": [{"tool_name": "vector_search", "results_count": 10, "relevance_score": 3.2, "duration_ms": 150}],
+  "escalation_steps": [],
+  "generator_step": {"model": "gpt-4o-mini", "prompt_tokens": 1200, "completion_tokens": 350, "confidence": 0.82},
+  "total_duration_ms": 1800
+}
+```
+
+Traces are cached (LRU, 100 entries) and retrievable via `GET /api/v1/trace/{id}` or the MCP `explain_trace` tool.
 
 ## Self-Correction Loop
 
@@ -230,8 +278,9 @@ All settings via `.env` or environment variables:
 - **Reasoning**: PyMangle (Datalog engine)
 - **Doc Parsing**: Docling (PDF/DOCX/PPTX + GPU)
 - **Graph Algorithms**: NetworkX (PageRank, KNN, PPR)
-- **UI**: Streamlit (7 tabs)
-- **Testing**: pytest (398 tests) + ruff
+- **API**: FastAPI (REST + MCP via FastMCP)
+- **UI**: Streamlit (7 tabs, httpx thin client)
+- **Testing**: pytest (377 tests) + ruff
 
 ## Streamlit UI Tabs
 
