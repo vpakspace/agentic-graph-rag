@@ -119,8 +119,37 @@ def community_search(
 
 
 # ---------------------------------------------------------------------------
-# 4. Hybrid search (vector + graph merge via RRF)
+# 4. Hybrid search (vector + graph merge via cosine re-ranking)
 # ---------------------------------------------------------------------------
+
+def _fetch_passage_embeddings(
+    chunk_ids: list[str],
+    driver: Driver,
+) -> dict[str, list[float]]:
+    """Fetch PassageNode embeddings from Neo4j for given chunk IDs."""
+    from agentic_graph_rag.indexing.dual_node import PASSAGE_LABEL
+
+    if not chunk_ids:
+        return {}
+
+    emb_map: dict[str, list[float]] = {}
+    with driver.session() as session:
+        result = session.run(
+            f"""
+            MATCH (pa:{PASSAGE_LABEL})
+            WHERE pa.chunk_id IN $chunk_ids
+            RETURN pa.chunk_id AS chunk_id, pa.embedding AS embedding
+            """,
+            chunk_ids=chunk_ids,
+        )
+        for record in result:
+            cid = record["chunk_id"]
+            emb = record["embedding"]
+            if cid and emb:
+                emb_map[cid] = list(emb)
+
+    return emb_map
+
 
 def hybrid_search(
     query: str,
@@ -128,7 +157,12 @@ def hybrid_search(
     openai_client: OpenAI,
     top_k: int | None = None,
 ) -> list[SearchResult]:
-    """Hybrid retrieval: vector + graph results merged via Reciprocal Rank Fusion."""
+    """Hybrid retrieval: vector + graph results merged via cosine re-ranking.
+
+    Collects passages from both vector search and graph traversal,
+    deduplicates, then re-ranks by actual cosine similarity to the query
+    embedding using stored PassageNode embeddings.
+    """
     cfg = get_settings()
     if top_k is None:
         top_k = cfg.retrieval.top_k_final
@@ -137,7 +171,48 @@ def hybrid_search(
     vector_results = vector_search(query, driver, openai_client, top_k=cfg_r.top_k_vector)
     graph_results = cypher_traverse(query, driver, openai_client, top_k=cfg_r.top_k_vector)
 
-    return _rrf_merge(vector_results, graph_results, top_k=top_k)
+    # Deduplicate by chunk id or content prefix
+    seen: dict[str, SearchResult] = {}
+    for r in vector_results + graph_results:
+        key = r.chunk.id or r.chunk.content[:80]
+        if key not in seen:
+            seen[key] = r
+
+    if not seen:
+        return []
+
+    # Get query embedding for re-ranking
+    query_emb = _embed_query(query, openai_client)
+
+    # Fetch PassageNode embeddings for cosine re-ranking
+    chunk_ids = [r.chunk.id for r in seen.values() if r.chunk.id]
+    emb_map = _fetch_passage_embeddings(chunk_ids, driver)
+
+    # Score each passage by cosine similarity to query
+    scored: list[tuple[float, str, SearchResult]] = []
+    for key, r in seen.items():
+        cid = r.chunk.id
+        if cid and cid in emb_map:
+            sim = _cosine_similarity(query_emb, emb_map[cid])
+        else:
+            # Fallback: keep original rank-based score, scaled down
+            sim = r.score * 0.3
+        scored.append((sim, key, r))
+
+    scored.sort(key=lambda x: x[0], reverse=True)
+
+    merged = []
+    for rank, (sim, _key, r) in enumerate(scored[:top_k], start=1):
+        merged.append(SearchResult(
+            chunk=r.chunk,
+            score=sim,
+            rank=rank,
+            source="hybrid",
+        ))
+
+    logger.info("Hybrid search: %d unique passages, returning top %d by cosine similarity",
+                len(seen), len(merged))
+    return merged
 
 
 def _rrf_merge(

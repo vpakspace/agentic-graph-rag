@@ -3,13 +3,14 @@
 from unittest.mock import MagicMock, patch
 
 import networkx as nx
-from rag_core.models import Chunk, Entity, PassageNode, PhraseNode
+from rag_core.models import Chunk, Entity, PassageNode, PhraseNode, Relationship
 
 from agentic_graph_rag.indexing.dual_node import (
     build_dual_graph,
     compute_ppr,
     create_passage_nodes,
     create_phrase_nodes,
+    create_phrase_relationships,
     link_entities_to_passages,
     link_phrase_to_passage,
 )
@@ -150,6 +151,76 @@ class TestLinkEntitiesToPassages:
 # compute_ppr
 # ---------------------------------------------------------------------------
 
+# ---------------------------------------------------------------------------
+# create_phrase_relationships
+# ---------------------------------------------------------------------------
+
+class TestCreatePhraseRelationships:
+    def test_empty(self):
+        driver = _mock_driver()
+        assert create_phrase_relationships([], driver) == 0
+
+    def test_creates_edges(self):
+        driver = _mock_driver()
+        session = driver.session().__enter__()
+
+        # Mock the result of MERGE query
+        rec = MagicMock()
+        rec.__getitem__ = lambda self, key: 1 if key == "cnt" else None
+        result = MagicMock()
+        result.single.return_value = rec
+        session.run.return_value = result
+
+        rels = [
+            Relationship(source="Python", target="ML", relation_type="USED_FOR"),
+            Relationship(source="Neo4j", target="Graph", relation_type="STORES"),
+        ]
+        count = create_phrase_relationships(rels, driver)
+        assert count == 2
+        assert session.run.call_count == 2
+
+    def test_skips_self_references(self):
+        driver = _mock_driver()
+        session = driver.session().__enter__()
+
+        rels = [
+            Relationship(source="Python", target="python", relation_type="SAME"),
+        ]
+        count = create_phrase_relationships(rels, driver)
+        assert count == 0
+        session.run.assert_not_called()
+
+    def test_skips_empty_names(self):
+        driver = _mock_driver()
+        session = driver.session().__enter__()
+
+        rels = [
+            Relationship(source="", target="ML", relation_type="R"),
+            Relationship(source="Python", target="", relation_type="R"),
+        ]
+        count = create_phrase_relationships(rels, driver)
+        assert count == 0
+
+    def test_cypher_contains_related_to(self):
+        driver = _mock_driver()
+        session = driver.session().__enter__()
+
+        rec = MagicMock()
+        rec.__getitem__ = lambda self, key: 1 if key == "cnt" else None
+        result = MagicMock()
+        result.single.return_value = rec
+        session.run.return_value = result
+
+        rels = [Relationship(source="A", target="B", relation_type="REL")]
+        create_phrase_relationships(rels, driver)
+
+        call_args = session.run.call_args
+        assert "RELATED_TO" in call_args[0][0]
+        assert call_args[1]["src"] == "A"
+        assert call_args[1]["tgt"] == "B"
+        assert call_args[1]["rel_type"] == "REL"
+
+
 class TestComputePPR:
     def test_empty_graph(self):
         g = nx.Graph()
@@ -234,3 +305,26 @@ class TestBuildDualGraph:
         assert len(passages) == 2
         # "Python" in c1, "ML" in c1 → 2 links
         assert links == 2
+
+    def test_passes_relationships(self):
+        driver = _mock_driver()
+        session = driver.session().__enter__()
+
+        # Mock for create_phrase_relationships MERGE query
+        rec = MagicMock()
+        rec.__getitem__ = lambda self, key: 1 if key == "cnt" else None
+        result = MagicMock()
+        result.single.return_value = rec
+        session.run.return_value = result
+
+        entities = [Entity(id="e1", name="A")]
+        chunks = [Chunk(id="c1", content="A is here")]
+        rels = [Relationship(source="A", target="B", relation_type="REL")]
+
+        build_dual_graph(entities, chunks, driver, relationships=rels)
+
+        # Verify RELATED_TO was attempted (among other calls)
+        cypher_calls = [
+            str(c) for c in session.run.call_args_list
+        ]
+        assert any("RELATED_TO" in c for c in cypher_calls)

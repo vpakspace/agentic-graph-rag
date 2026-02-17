@@ -16,7 +16,7 @@ from typing import TYPE_CHECKING
 
 import networkx as nx
 from rag_core.config import get_settings
-from rag_core.models import Chunk, Entity, PassageNode, PhraseNode
+from rag_core.models import Chunk, Entity, PassageNode, PhraseNode, Relationship
 
 if TYPE_CHECKING:
     from neo4j import Driver
@@ -181,7 +181,56 @@ def link_entities_to_passages(
 
 
 # ---------------------------------------------------------------------------
-# 4. Personalized PageRank (PPR)
+# 4. Create inter-PhraseNode relationships (RELATED_TO)
+# ---------------------------------------------------------------------------
+
+RELATED_TO_LABEL = "RELATED_TO"
+
+
+def create_phrase_relationships(
+    relationships: list[Relationship],
+    driver: Driver,
+) -> int:
+    """Create RELATED_TO edges between PhraseNodes from extracted relationships.
+
+    Matches source/target by case-insensitive PhraseNode name.
+    Returns number of edges created.
+    """
+    if not relationships:
+        return 0
+
+    count = 0
+    with driver.session() as session:
+        for rel in relationships:
+            src = rel.source.strip()
+            tgt = rel.target.strip()
+            if not src or not tgt or src.lower() == tgt.lower():
+                continue
+
+            result = session.run(
+                f"""
+                MATCH (a:{PHRASE_LABEL})
+                WHERE toLower(a.name) = toLower($src)
+                MATCH (b:{PHRASE_LABEL})
+                WHERE toLower(b.name) = toLower($tgt)
+                MERGE (a)-[r:{RELATED_TO_LABEL}]->(b)
+                SET r.relation_type = $rel_type
+                RETURN count(r) AS cnt
+                """,
+                src=src,
+                tgt=tgt,
+                rel_type=rel.relation_type,
+            )
+            rec = result.single()
+            if rec and rec["cnt"] > 0:
+                count += 1
+
+    logger.info("Created %d RELATED_TO edges between PhraseNodes", count)
+    return count
+
+
+# ---------------------------------------------------------------------------
+# 5. Personalized PageRank (PPR)
 # ---------------------------------------------------------------------------
 
 def compute_ppr(
@@ -234,12 +283,14 @@ def build_dual_graph(
     chunks: list[Chunk],
     driver: Driver,
     pagerank_scores: dict[str, float] | None = None,
+    relationships: list[Relationship] | None = None,
 ) -> tuple[list[PhraseNode], list[PassageNode], int]:
     """Build complete dual-node graph in Neo4j.
 
     1. Create PhraseNodes from entities
     2. Create PassageNodes from chunks
     3. Link entities to passages via MENTIONED_IN
+    4. Create inter-PhraseNode edges from relationships (RELATED_TO)
 
     Returns (phrase_nodes, passage_nodes, link_count).
     """
@@ -247,9 +298,12 @@ def build_dual_graph(
     passage_nodes = create_passage_nodes(chunks, driver)
     link_count = link_entities_to_passages(entities, chunks, driver)
 
+    # Create inter-PhraseNode edges from extracted relationships
+    rel_count = create_phrase_relationships(relationships or [], driver)
+
     logger.info(
-        "Dual graph built: %d phrases, %d passages, %d links",
-        len(phrase_nodes), len(passage_nodes), link_count,
+        "Dual graph built: %d phrases, %d passages, %d MENTIONED_IN, %d RELATED_TO",
+        len(phrase_nodes), len(passage_nodes), link_count, rel_count,
     )
     return phrase_nodes, passage_nodes, link_count
 

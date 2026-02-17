@@ -138,5 +138,75 @@
     "question_ru": "Как подход к семантической интеграции в AI-системах эволюционировал от простого RAG к Semantic Companion Layer?",
     "type": "temporal",
     "keywords": ["evolution", "RAG", "Semantic Companion", "agentic", "progression"]
+  },
+  {
+    "id": 21,
+    "question": "Why was GraphQL chosen as the northbound contract for MeaningHub instead of REST or gRPC?",
+    "question_ru": "Почему GraphQL был выбран в качестве northbound-контракта MeaningHub вместо REST или gRPC?",
+    "type": "simple",
+    "keywords": ["GraphQL", "REST", "gRPC", "northbound", "contract", "resolveIntent"]
+  },
+  {
+    "id": 22,
+    "question": "What is a ConstraintSet in MeaningHub and what provenance information does it include?",
+    "question_ru": "Что такое ConstraintSet в MeaningHub и какую информацию о провенансе он содержит?",
+    "type": "simple",
+    "keywords": ["ConstraintSet", "provenance", "packsUsed", "rulesFired", "traceId", "output"]
+  },
+  {
+    "id": 23,
+    "question": "How do portable packs enable domain customization without schema changes in MeaningHub?",
+    "question_ru": "Как портативные пакеты (packs) обеспечивают кастомизацию домена без изменения схемы в MeaningHub?",
+    "type": "relation",
+    "keywords": ["packs", "domain", "allowlist", "keywords", "rules", "mappings", "YAML", "customization"]
+  },
+  {
+    "id": 24,
+    "question": "What is the relationship between Strawberry Python library and documentation integrity in MeaningHub?",
+    "question_ru": "Какая связь между библиотекой Strawberry Python и целостностью документации в MeaningHub?",
+    "type": "relation",
+    "keywords": ["Strawberry", "SDL", "documentation", "CI", "code-first", "integrity"]
+  },
+  {
+    "id": 25,
+    "question": "How does the semantic core pipeline process a query through all stages from intent to explanation?",
+    "question_ru": "Как пайплайн семантического ядра обрабатывает запрос через все этапы от намерения до объяснения?",
+    "type": "multi_hop",
+    "keywords": ["semantic core", "intent", "link", "normalize", "infer", "compile", "explain", "pipeline"]
+  },
+  {
+    "id": 26,
+    "question": "How does the dual northbound interface design serve both traditional developers and AI agent runtimes?",
+    "question_ru": "Как дизайн двойного northbound-интерфейса обслуживает как традиционных разработчиков, так и среды выполнения AI-агентов?",
+    "type": "multi_hop",
+    "keywords": ["dual", "GraphQL", "MCP", "developers", "agents", "northbound", "shared pipeline"]
+  },
+  {
+    "id": 27,
+    "question": "List all seven architectural decisions described in the Semantic Companion Layer design",
+    "question_ru": "Перечисли все семь архитектурных решений, описанных в дизайне Semantic Companion Layer",
+    "type": "global",
+    "keywords": ["decisions", "GraphQL", "multi-backend", "ConstraintSet", "MCP", "packs", "Strawberry", "SDL"]
+  },
+  {
+    "id": 28,
+    "question": "What are the primary risks of unbounded meaning in agentic AI systems and how does SCL address them?",
+    "question_ru": "Каковы основные риски неограниченного значения (unbounded meaning) в агентных AI-системах и как SCL их решает?",
+    "type": "global",
+    "keywords": ["unbounded meaning", "risk", "predicates", "interpretation", "provenance", "governed"]
+  },
+  {
+    "id": 29,
+    "question": "What is the Cognitive Contract concept and what three principles does it define?",
+    "question_ru": "Что такое концепция Cognitive Contract и какие три принципа она определяет?",
+    "type": "simple",
+    "keywords": ["Cognitive Contract", "stable contract", "portable semantics", "governance", "principles"]
+  },
+  {
+    "id": 30,
+    "question": "What role do southbound adapters play and which specific engines does MeaningHub use?",
+    "question_ru": "Какую роль играют southbound-адаптеры и какие конкретные движки использует MeaningHub?",
+    "type": "relation",
+    "keywords": ["southbound", "adapters", "SPARQL", "Cypher", "vector", "engines", "execution"]
   }
 ]

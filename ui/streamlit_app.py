@@ -217,6 +217,7 @@ with tab_ingest:
 
                 phrase_nodes, passage_nodes, link_count = build_dual_graph(
                     entities, chunks, driver,
+                    relationships=relationships,
                 )
 
                 progress.progress(90, text=graph_label)

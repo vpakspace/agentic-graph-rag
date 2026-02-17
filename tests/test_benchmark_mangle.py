@@ -18,7 +18,7 @@ class TestBenchmarkMangleMode:
 
         # Both use the same question set
         questions = load_questions()
-        assert len(questions) == 15
+        assert len(questions) == 20
 
     def test_six_modes_total(self):
         """Adding agent_mangle brings total to 6 modes."""

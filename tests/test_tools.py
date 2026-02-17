@@ -7,12 +7,14 @@ from rag_core.models import Chunk, GraphContext, SearchResult
 from agentic_graph_rag.agent.tools import (
     _cosine_similarity,
     _embed_query,
+    _fetch_passage_embeddings,
     _generate_sub_queries,
     _graph_context_to_results,
     _rrf_merge,
     community_search,
     comprehensive_search,
     full_document_read,
+    hybrid_search,
     temporal_query,
     vector_search,
 )
@@ -131,6 +133,160 @@ class TestRRFMerge:
         merged = _rrf_merge(_make_results(3), _make_results(3), top_k=5)
         for i, r in enumerate(merged, start=1):
             assert r.rank == i
+
+
+# ---------------------------------------------------------------------------
+# _fetch_passage_embeddings
+# ---------------------------------------------------------------------------
+
+class TestFetchPassageEmbeddings:
+    def test_returns_embeddings_for_known_ids(self):
+        driver = _mock_driver()
+        session = driver.session().__enter__()
+
+        rec1 = MagicMock()
+        rec1.__getitem__ = lambda self, key: {"chunk_id": "c1", "embedding": [0.5, 0.5]}[key]
+        rec2 = MagicMock()
+        rec2.__getitem__ = lambda self, key: {"chunk_id": "c2", "embedding": [1.0, 0.0]}[key]
+
+        result_mock = MagicMock()
+        result_mock.__iter__ = MagicMock(return_value=iter([rec1, rec2]))
+        session.run.return_value = result_mock
+
+        emb_map = _fetch_passage_embeddings(["c1", "c2"], driver)
+        assert len(emb_map) == 2
+        assert emb_map["c1"] == [0.5, 0.5]
+        assert emb_map["c2"] == [1.0, 0.0]
+
+    def test_empty_chunk_ids(self):
+        driver = _mock_driver()
+        emb_map = _fetch_passage_embeddings([], driver)
+        assert emb_map == {}
+
+    def test_skips_missing_embeddings(self):
+        driver = _mock_driver()
+        session = driver.session().__enter__()
+
+        rec1 = MagicMock()
+        rec1.__getitem__ = lambda self, key: {"chunk_id": "c1", "embedding": None}[key]
+
+        result_mock = MagicMock()
+        result_mock.__iter__ = MagicMock(return_value=iter([rec1]))
+        session.run.return_value = result_mock
+
+        emb_map = _fetch_passage_embeddings(["c1"], driver)
+        assert emb_map == {}
+
+
+# ---------------------------------------------------------------------------
+# hybrid_search (cosine re-ranking)
+# ---------------------------------------------------------------------------
+
+class TestHybridSearch:
+    @patch("agentic_graph_rag.agent.tools._fetch_passage_embeddings")
+    @patch("agentic_graph_rag.agent.tools.cypher_traverse")
+    @patch("agentic_graph_rag.agent.tools.vector_search")
+    def test_reranks_by_cosine_similarity(self, mock_vs, mock_ct, mock_fetch):
+        """Higher cosine similarity passages should rank first."""
+        # vector_search returns [c1, c2]
+        mock_vs.return_value = [
+            SearchResult(chunk=Chunk(id="c1", content="Low match"), score=1.0, rank=1, source="vector"),
+            SearchResult(chunk=Chunk(id="c2", content="High match"), score=0.5, rank=2, source="vector"),
+        ]
+        # cypher_traverse returns [c3] — a new passage
+        mock_ct.return_value = [
+            SearchResult(chunk=Chunk(id="c3", content="Best match"), score=1.0, rank=1, source="graph"),
+        ]
+        # PassageNode embeddings: c3 is closest to query
+        mock_fetch.return_value = {
+            "c1": [0.1, 0.9],  # low similarity to [1,0]
+            "c2": [0.7, 0.3],  # medium similarity
+            "c3": [0.99, 0.01],  # very high similarity
+        }
+
+        driver = _mock_driver()
+        client = _mock_openai_client([1.0, 0.0])  # query embedding
+
+        results = hybrid_search("test", driver, client, top_k=5)
+        assert len(results) == 3
+        assert results[0].chunk.id == "c3"  # highest cosine similarity
+        assert results[0].source == "hybrid"
+        assert results[0].score > results[1].score
+        assert results[1].score > results[2].score
+
+    @patch("agentic_graph_rag.agent.tools._fetch_passage_embeddings")
+    @patch("agentic_graph_rag.agent.tools.cypher_traverse")
+    @patch("agentic_graph_rag.agent.tools.vector_search")
+    def test_deduplicates_results(self, mock_vs, mock_ct, mock_fetch):
+        """Same passage from both sources should appear only once."""
+        shared = SearchResult(chunk=Chunk(id="c1", content="Shared"), score=1.0, rank=1, source="vector")
+        mock_vs.return_value = [shared]
+        mock_ct.return_value = [
+            SearchResult(chunk=Chunk(id="c1", content="Shared"), score=1.0, rank=1, source="graph"),
+        ]
+        mock_fetch.return_value = {"c1": [1.0, 0.0]}
+
+        driver = _mock_driver()
+        client = _mock_openai_client([1.0, 0.0])
+
+        results = hybrid_search("test", driver, client, top_k=5)
+        assert len(results) == 1
+        assert results[0].chunk.id == "c1"
+
+    @patch("agentic_graph_rag.agent.tools._fetch_passage_embeddings")
+    @patch("agentic_graph_rag.agent.tools.cypher_traverse")
+    @patch("agentic_graph_rag.agent.tools.vector_search")
+    def test_fallback_for_missing_embeddings(self, mock_vs, mock_ct, mock_fetch):
+        """Passages without embeddings get fallback score."""
+        mock_vs.return_value = [
+            SearchResult(chunk=Chunk(id="c1", content="Has embedding"), score=0.8, rank=1, source="vector"),
+            SearchResult(chunk=Chunk(id="", content="No id passage"), score=0.5, rank=2, source="vector"),
+        ]
+        mock_ct.return_value = []
+        # Only c1 has embedding
+        mock_fetch.return_value = {"c1": [1.0, 0.0]}
+
+        driver = _mock_driver()
+        client = _mock_openai_client([1.0, 0.0])
+
+        results = hybrid_search("test", driver, client, top_k=5)
+        assert len(results) == 2
+        # c1 has real cosine score, should rank first
+        assert results[0].chunk.id == "c1"
+        # second result has fallback score
+        assert results[1].score < results[0].score
+
+    @patch("agentic_graph_rag.agent.tools._fetch_passage_embeddings")
+    @patch("agentic_graph_rag.agent.tools.cypher_traverse")
+    @patch("agentic_graph_rag.agent.tools.vector_search")
+    def test_respects_top_k(self, mock_vs, mock_ct, mock_fetch):
+        """Returns at most top_k results."""
+        mock_vs.return_value = _make_results(5, source="vector")
+        mock_ct.return_value = _make_results(5, source="graph")
+        mock_fetch.return_value = {
+            f"c{i}": [1.0 / (i + 1), 0.0] for i in range(5)
+        }
+
+        driver = _mock_driver()
+        client = _mock_openai_client([1.0, 0.0])
+
+        results = hybrid_search("test", driver, client, top_k=3)
+        assert len(results) == 3
+        for i, r in enumerate(results, start=1):
+            assert r.rank == i
+
+    @patch("agentic_graph_rag.agent.tools.cypher_traverse")
+    @patch("agentic_graph_rag.agent.tools.vector_search")
+    def test_empty_results(self, mock_vs, mock_ct):
+        """Returns empty list when both sources return nothing."""
+        mock_vs.return_value = []
+        mock_ct.return_value = []
+
+        driver = _mock_driver()
+        client = _mock_openai_client()
+
+        results = hybrid_search("test", driver, client)
+        assert results == []
 
 
 # ---------------------------------------------------------------------------

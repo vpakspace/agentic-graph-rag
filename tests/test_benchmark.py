@@ -10,7 +10,7 @@ from benchmark.runner import MODES, load_questions
 class TestLoadQuestions:
     def test_loads_all(self):
         qs = load_questions()
-        assert len(qs) == 15
+        assert len(qs) == 20
 
     def test_has_required_fields(self):
         qs = load_questions()

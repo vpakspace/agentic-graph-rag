@@ -109,11 +109,30 @@ class TestTraverseGraph:
         assert result["passage_nodes"] == []
         assert result["relationships"] == []
 
+    def test_traversal_uses_related_to_for_step1(self):
+        """Verify step 1 Cypher uses RELATED_TO edges."""
+        driver = _mock_driver()
+        session = driver.session().__enter__()
+
+        session.run.side_effect = [
+            _mock_records([]),  # step 1: traversal via RELATED_TO
+            MagicMock(single=MagicMock(return_value=None)),  # entry lookup
+            _mock_records([]),  # step 2: co-occurrence expansion
+            _mock_records([]),  # step 3: passage lookup
+        ]
+
+        traverse_graph(["e1"], driver, max_hops=2)
+
+        # First call should be the RELATED_TO traversal query
+        first_call = session.run.call_args_list[0]
+        cypher = first_call[0][0]
+        assert "RELATED_TO" in cypher
+
     def test_traversal_with_results(self):
         driver = _mock_driver()
         session = driver.session().__enter__()
 
-        # First run: phrase traversal
+        # Run 1: phrase traversal via RELATED_TO
         traversal_records = _mock_records([
             {
                 "connected_id": "e2", "connected_name": "ML",
@@ -124,18 +143,21 @@ class TestTraverseGraph:
             },
         ])
 
-        # Second run: entry node lookup
+        # Run 2: entry node lookup
         entry_record = MagicMock()
         entry_record.__getitem__ = lambda self, key: {"id": "e1", "name": "Python", "entity_type": "Language"}[key]
         entry_result = MagicMock()
         entry_result.single.return_value = entry_record
 
-        # Third run: passage lookup
+        # Run 3: co-occurrence expansion via MENTIONED_IN
+        cooccur_records = _mock_records([])
+
+        # Run 4: passage lookup
         passage_records = _mock_records([
             {"id": "p1", "text": "Python is used for ML", "chunk_id": "c1"},
         ])
 
-        session.run.side_effect = [traversal_records, entry_result, passage_records]
+        session.run.side_effect = [traversal_records, entry_result, cooccur_records, passage_records]
 
         result = traverse_graph(["e1"], driver, max_hops=2)
 
@@ -143,6 +165,47 @@ class TestTraverseGraph:
         assert len(result["passage_nodes"]) == 1
         assert len(result["relationships"]) == 1
         assert result["relationships"][0]["relation"] == "USED_FOR"
+
+    def test_cooccurrence_expansion_finds_neighbors(self):
+        """Verify co-occurrence step discovers PhraseNodes sharing a PassageNode."""
+        driver = _mock_driver()
+        session = driver.session().__enter__()
+
+        # Step 1: RELATED_TO traversal — no connections
+        traversal_records = _mock_records([])
+
+        # Entry node lookup
+        entry_record = MagicMock()
+        entry_record.__getitem__ = lambda self, key: {
+            "id": "e1", "name": "Python", "entity_type": "Language",
+        }[key]
+        entry_result = MagicMock()
+        entry_result.single.return_value = entry_record
+
+        # Step 2: co-occurrence — finds neighbor via shared passage
+        cooccur_records = _mock_records([
+            {"id": "e3", "name": "Django", "entity_type": "Framework"},
+        ])
+
+        # Step 3: passage lookup — passages from both e1 and e3
+        passage_records = _mock_records([
+            {"id": "p1", "text": "Python uses Django", "chunk_id": "c1"},
+            {"id": "p2", "text": "Django is a framework", "chunk_id": "c2"},
+        ])
+
+        session.run.side_effect = [
+            traversal_records, entry_result, cooccur_records, passage_records,
+        ]
+
+        result = traverse_graph(["e1"], driver, max_hops=2)
+
+        # e1 (entry) + e3 (co-occurrence neighbor)
+        assert len(result["phrase_nodes"]) == 2
+        names = {p["name"] for p in result["phrase_nodes"]}
+        assert "Python" in names
+        assert "Django" in names
+        # Both passages collected
+        assert len(result["passage_nodes"]) == 2
 
     @patch("agentic_graph_rag.retrieval.vector_cypher.get_settings")
     def test_uses_settings_max_hops(self, mock_settings):
@@ -153,15 +216,15 @@ class TestTraverseGraph:
         driver = _mock_driver()
         session = driver.session().__enter__()
 
-        session.run.side_effect = [
-            _mock_records([]),  # traversal
-            _mock_records([]),  # passage lookup
-        ]
-
         # Entry node lookup returns None
         entry_result = MagicMock()
         entry_result.single.return_value = None
-        session.run.side_effect = [_mock_records([]), entry_result, _mock_records([])]
+        session.run.side_effect = [
+            _mock_records([]),   # step 1: traversal via RELATED_TO
+            entry_result,        # entry lookup
+            _mock_records([]),   # step 2: co-occurrence expansion
+            _mock_records([]),   # step 3: passage lookup
+        ]
 
         traverse_graph(["e1"], driver)
         assert session.run.call_count >= 1
@@ -273,7 +336,7 @@ class TestSearch:
              "pagerank_score": 0.5, "score": 0.9},
         ])
 
-        # Call 2: traverse - phrase relationships
+        # Call 2: traverse - phrase relationships via RELATED_TO
         traversal_records = _mock_records([])
 
         # Call 3: entry node lookup
@@ -282,7 +345,10 @@ class TestSearch:
         entry_result = MagicMock()
         entry_result.single.return_value = entry_node
 
-        # Call 4: passage lookup
+        # Call 4: co-occurrence expansion
+        cooccur_records = _mock_records([])
+
+        # Call 5: passage lookup
         passage_records = _mock_records([
             {"id": "p1", "text": "Python content", "chunk_id": "c1"},
         ])
@@ -291,6 +357,7 @@ class TestSearch:
             entry_records,
             traversal_records,
             entry_result,
+            cooccur_records,
             passage_records,
         ]
 

@@ -15,7 +15,7 @@ from typing import TYPE_CHECKING
 from rag_core.config import get_settings
 from rag_core.models import Entity, GraphContext
 
-from agentic_graph_rag.indexing.dual_node import PASSAGE_LABEL, PHRASE_LABEL
+from agentic_graph_rag.indexing.dual_node import PASSAGE_LABEL, PHRASE_LABEL, RELATED_TO_LABEL
 
 if TYPE_CHECKING:
     from neo4j import Driver
@@ -113,12 +113,12 @@ def traverse_graph(
     relationships: list[dict[str, str]] = []
 
     with driver.session() as session:
-        # Step 1: Traverse PhraseNode relationships up to max_hops
+        # Step 1: Traverse inter-PhraseNode RELATED_TO edges up to max_hops
         result = session.run(
             f"""
             MATCH (start:{PHRASE_LABEL})
             WHERE start.id IN $entry_ids
-            MATCH path = (start)-[r*1..{max_hops}]-(connected:{PHRASE_LABEL})
+            MATCH path = (start)-[r:{RELATED_TO_LABEL}*1..{max_hops}]-(connected:{PHRASE_LABEL})
             UNWIND relationships(path) AS rel
             WITH start, connected, rel,
                  startNode(rel) AS src, endNode(rel) AS tgt
@@ -166,7 +166,35 @@ def traverse_graph(
                         "entity_type": rec["entity_type"] or "",
                     }
 
-        # Step 2: Collect PassageNodes linked to all discovered PhraseNodes
+        # Step 2: Expand via MENTIONED_IN co-occurrence (1-hop).
+        # Two PhraseNodes that appear in the same PassageNode are related
+        # even without an explicit RELATED_TO edge. This recovers the
+        # breadth that RELATED_TO-only traversal misses (46% of nodes
+        # are isolated). Hybrid is protected by cosine re-ranking.
+        cooccur_seed_ids = list(phrase_nodes.keys())
+        if cooccur_seed_ids:
+            result = session.run(
+                f"""
+                MATCH (seed:{PHRASE_LABEL})-[:MENTIONED_IN]->(pa:{PASSAGE_LABEL})
+                      <-[:MENTIONED_IN]-(neighbor:{PHRASE_LABEL})
+                WHERE seed.id IN $seed_ids AND NOT neighbor.id IN $seed_ids
+                RETURN DISTINCT
+                    neighbor.id AS id,
+                    neighbor.name AS name,
+                    neighbor.entity_type AS entity_type
+                """,
+                seed_ids=cooccur_seed_ids,
+            )
+            for record in result:
+                nid = record["id"]
+                if nid and nid not in phrase_nodes:
+                    phrase_nodes[nid] = {
+                        "id": nid,
+                        "name": record["name"] or "",
+                        "entity_type": record["entity_type"] or "",
+                    }
+
+        # Step 3: Collect PassageNodes linked to all discovered PhraseNodes
         all_phrase_ids = list(phrase_nodes.keys())
         if all_phrase_ids:
             result = session.run(
