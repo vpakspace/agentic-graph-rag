@@ -43,11 +43,21 @@ def create_app(service: PipelineService | None = None) -> FastAPI:
             from agentic_graph_rag.service import PipelineService
             svc = PipelineService(driver, client, reasoning)
             set_service(svc)
+            try:
+                from api.mcp_server import mount_mcp
+                mount_mcp(app, svc)
+            except Exception:
+                pass
             yield
             driver.close()
         else:
             # Testing: use provided service
             set_service(service)
+            try:
+                from api.mcp_server import mount_mcp
+                mount_mcp(app, service)
+            except Exception:
+                pass
             yield
 
     app = FastAPI(
