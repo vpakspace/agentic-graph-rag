@@ -4,38 +4,41 @@
 
 A production-ready Graph RAG system combining four cutting-edge techniques from recent research into a unified retrieval pipeline with declarative reasoning, full pipeline provenance, and a typed API contract (FastAPI REST + MCP).
 
-## Benchmark Results (v5)
+## Benchmark Results (v10)
 
-Evaluated on 15 bilingual questions (5 types) across 6 retrieval modes:
+Evaluated on **30 bilingual questions** (15 Doc1 Russian + 15 Doc2 English) across 6 retrieval modes = **180 evaluations**:
 
-| Mode | Accuracy | Description |
-|------|----------|-------------|
-| **Agent (pattern)** | **12/15 (80%)** | Auto-routing via regex patterns + self-correction |
-| **Agent (Mangle)** | **12/15 (80%)** | Declarative Datalog rule routing + self-correction |
-| **Vector** | **11/15 (73%)** | Embedding similarity search |
-| **Hybrid** | **11/15 (73%)** | Vector + Graph with RRF fusion |
-| **Cypher** | **10/15 (67%)** | Graph traversal via VectorCypher (3-hop) |
-| **Agent (LLM)** | **10/15 (67%)** | Auto-routing via GPT-4o-mini |
-| **Overall** | **66/90 (73%)** | |
+| Mode | Total | Doc1 (RU) | Doc2 (EN) | Description |
+|------|-------|-----------|-----------|-------------|
+| **Agent (LLM)** | **22/30 (73%)** | 10/15 | 12/15 | Auto-routing via GPT-4o-mini |
+| **Vector** | **20/30 (66%)** | 10/15 | 10/15 | Embedding similarity search |
+| **Cypher** | **20/30 (66%)** | 10/15 | 10/15 | Graph traversal via VectorCypher (3-hop) |
+| **Agent (pattern)** | **20/30 (66%)** | 9/15 | 11/15 | Auto-routing via regex patterns + self-correction |
+| **Agent (Mangle)** | **19/30 (63%)** | 9/15 | 10/15 | Declarative Datalog rule routing + self-correction |
+| **Hybrid** | **17/30 (56%)** | 11/15 | 6/15 | Vector + Graph with cosine re-ranking |
+| **Overall** | **118/180 (65%)** | **59/90** | **59/90** | |
 
-Accuracy by query type (best mode per type):
+Accuracy by query type (across all modes):
 
-| Type | Best Mode | Accuracy |
-|------|-----------|----------|
-| simple | vector, hybrid, agent_pattern, agent_mangle | 100% |
-| multi_hop | all modes | 100% |
-| relation | vector, hybrid, agent_pattern, agent_llm, agent_mangle | 100% |
-| temporal | agent_mangle | 100% |
-| global | agent_pattern | 67% |
+| Type | Accuracy | Notes |
+|------|----------|-------|
+| relation | 35/42 (83%) | Best performing category |
+| temporal | 18/24 (75%) | Temporal boost helps |
+| multi_hop | 25/36 (69%) | Agent escalation effective |
+| simple | 25/42 (59%) | Some questions need specific facts |
+| global | 15/36 (41%) | Hardest — requires full document coverage |
 
 <details>
-<summary>Benchmark history (v3 → v4 → v5)</summary>
+<summary>Benchmark history (v3 → v5 → v10)</summary>
 
-| Version | Overall | Key Changes |
-|---------|---------|-------------|
-| v3 | 34/90 (38%) | Baseline (lang=en, pre-improvements) |
-| v4 | 60/90 (67%) | lang=ru, cosine ranking, synthesis prompt, temporal boost |
-| v5 | 66/90 (73%) | comprehensive_search, completeness check, retry query, max_hops=3 |
+| Version | Questions | Overall | Key Changes |
+|---------|-----------|---------|-------------|
+| v3 | 15 | 34/90 (38%) | Baseline (lang=en, pre-improvements) |
+| v4 | 15 | 60/90 (67%) | lang=ru, cosine ranking, synthesis prompt, temporal boost |
+| v5 | 15 | 66/90 (73%) | comprehensive_search, completeness check, retry query, max_hops=3 |
+| v7 | 20 | 87/120 (73%) | Dual-document (Doc1 RU + Doc2 EN), RELATED_TO edges |
+| v9 | 20 | 84/120 (70%) | Hybrid cosine re-ranking (replaced RRF) |
+| v10 | 30 | 118/180 (65%) | 15 new Doc2 questions, co-occurrence expansion restored |
 
 </details>
 
@@ -117,12 +120,12 @@ agentic-graph-rag/
 │   └── streamlit_app.py       # 7-tab Streamlit UI (port 8506, httpx thin client)
 │
 ├── benchmark/
-│   ├── questions.json         # 15 test questions (5 types, EN/RU)
+│   ├── questions.json         # 30 test questions (5 types, EN/RU, 2 documents)
 │   ├── runner.py              # 6-mode benchmark runner
 │   └── compare.py             # Comparison table generator
 │
 ├── run_api.py                 # API launcher (uvicorn, port 8507)
-└── tests/                     # 377 unit tests (269 core + 108 pymangle)
+└── tests/                     # 393 unit tests (285 core + 108 pymangle)
 ```
 
 ## Quick Start
@@ -162,7 +165,7 @@ docker run -d \
 ### Run Tests
 
 ```bash
-PYTHONPATH=.:pymangle pytest tests/ pymangle/ -x -q  # 377 tests, ~4 seconds
+PYTHONPATH=.:pymangle pytest tests/ pymangle/ -x -q  # 393 tests, ~4 seconds
 ```
 
 ### Run API Server (v6)
@@ -280,7 +283,7 @@ All settings via `.env` or environment variables:
 - **Graph Algorithms**: NetworkX (PageRank, KNN, PPR)
 - **API**: FastAPI (REST + MCP via FastMCP)
 - **UI**: Streamlit (7 tabs, httpx thin client)
-- **Testing**: pytest (377 tests) + ruff
+- **Testing**: pytest (393 tests) + ruff
 
 ## Streamlit UI Tabs
 
