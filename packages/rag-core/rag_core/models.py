@@ -129,6 +129,61 @@ class SearchResult(BaseModel):
     source: str = "vector"  # "vector", "graph", "hybrid"
 
 
+# ---------------------------------------------------------------------------
+# Provenance models (v6 — pipeline trace)
+# ---------------------------------------------------------------------------
+
+class ToolStep(BaseModel):
+    """One tool execution step in the pipeline."""
+
+    tool_name: str
+    results_count: int = 0
+    relevance_score: float = 0.0
+    duration_ms: int = 0
+    query_used: str = ""
+
+
+class EscalationStep(BaseModel):
+    """Tool-to-tool escalation record."""
+
+    from_tool: str
+    to_tool: str
+    reason: str = ""
+    rephrased_query: str = ""
+
+
+class RouterStep(BaseModel):
+    """Router classification result with timing."""
+
+    method: str  # "pattern", "llm", "mangle"
+    decision: RouterDecision
+    duration_ms: int = 0
+    rules_fired: list[str] = Field(default_factory=list)
+
+
+class GeneratorStep(BaseModel):
+    """Answer generation metadata."""
+
+    model: str = ""
+    prompt_tokens: int = 0
+    completion_tokens: int = 0
+    confidence: float = 0.0
+    completeness_check: bool | None = None
+
+
+class PipelineTrace(BaseModel):
+    """Full pipeline provenance artifact."""
+
+    trace_id: str
+    timestamp: str
+    query: str
+    router_step: RouterStep | None = None
+    tool_steps: list[ToolStep] = Field(default_factory=list)
+    escalation_steps: list[EscalationStep] = Field(default_factory=list)
+    generator_step: GeneratorStep | None = None
+    total_duration_ms: int = 0
+
+
 class QAResult(BaseModel):
     """Final Q&A result with answer, sources, and confidence."""
 
@@ -140,3 +195,4 @@ class QAResult(BaseModel):
     retries: int = 0
     router_decision: RouterDecision | None = None
     graph_context: GraphContext | None = None
+    trace: PipelineTrace | None = None  # v6 provenance
