@@ -8,11 +8,24 @@ and retries with different strategies when quality is low.
 from __future__ import annotations
 
 import logging
+import time
+import uuid
+from datetime import datetime, timezone
 from typing import TYPE_CHECKING
 
 from rag_core.config import get_settings
 from rag_core.generator import generate_answer
-from rag_core.models import QAResult, QueryType, RouterDecision, SearchResult
+from rag_core.models import (
+    EscalationStep,
+    GeneratorStep,
+    PipelineTrace,
+    QAResult,
+    QueryType,
+    RouterDecision,
+    RouterStep,
+    SearchResult,
+    ToolStep,
+)
 from rag_core.reflector import evaluate_completeness, evaluate_relevance, generate_retry_query
 
 from agentic_graph_rag.agent.router import classify_query
@@ -79,6 +92,7 @@ def self_correction_loop(
     decision: RouterDecision,
     max_retries: int | None = None,
     relevance_threshold: float | None = None,
+    trace: PipelineTrace | None = None,
 ) -> tuple[list[SearchResult], int]:
     """Execute retrieval with self-correction.
 
@@ -102,11 +116,21 @@ def self_correction_loop(
     for attempt in range(max_retries + 1):
         # Execute tool
         tool_fn = _TOOL_REGISTRY[tool_name]
+        t0 = time.perf_counter()
         results = tool_fn(query, driver, openai_client)
+        elapsed_ms = int((time.perf_counter() - t0) * 1000)
         tried_tools.add(tool_name)
 
         if not results:
             logger.warning("Tool '%s' returned no results (attempt %d)", tool_name, attempt + 1)
+            if trace is not None:
+                trace.tool_steps.append(ToolStep(
+                    tool_name=tool_name,
+                    results_count=0,
+                    relevance_score=0.0,
+                    duration_ms=elapsed_ms,
+                    query_used=query,
+                ))
         else:
             # Evaluate relevance
             score = evaluate_relevance(query, results, openai_client=openai_client)
@@ -121,6 +145,16 @@ def self_correction_loop(
                 best_score = score
                 best_attempt = attempt
 
+            # Record tool step in trace
+            if trace is not None:
+                trace.tool_steps.append(ToolStep(
+                    tool_name=tool_name,
+                    results_count=len(results),
+                    relevance_score=score,
+                    duration_ms=elapsed_ms,
+                    query_used=query,
+                ))
+
             if score >= relevance_threshold:
                 return results, attempt
 
@@ -131,6 +165,13 @@ def self_correction_loop(
                 # Rephrase query before escalating for better coverage
                 query = generate_retry_query(query, results, openai_client=openai_client)
                 logger.info("Escalating from '%s' to '%s' (rephrased query)", tool_name, next_tool)
+                if trace is not None:
+                    trace.escalation_steps.append(EscalationStep(
+                        from_tool=tool_name,
+                        to_tool=next_tool,
+                        reason=f"relevance {best_score:.1f} < threshold {relevance_threshold}",
+                        rephrased_query=query,
+                    ))
                 tool_name = next_tool
             else:
                 logger.info("No more tools to escalate to")
@@ -181,8 +222,24 @@ def run(
 
         openai_client = OpenAI(api_key=cfg.openai.api_key)
 
+    t_start = time.perf_counter()
+    trace = PipelineTrace(
+        trace_id=f"tr_{uuid.uuid4().hex[:12]}",
+        timestamp=datetime.now(timezone.utc).isoformat(),
+        query=query,
+    )
+
     # Step 1: Classify query
+    t_router = time.perf_counter()
     decision = classify_query(query, use_llm=use_llm_router, openai_client=openai_client, reasoning=reasoning)
+    router_ms = int((time.perf_counter() - t_router) * 1000)
+
+    router_method = "mangle" if reasoning else ("llm" if use_llm_router else "pattern")
+    trace.router_step = RouterStep(
+        method=router_method,
+        decision=decision,
+        duration_ms=router_ms,
+    )
     logger.info(
         "Query classified: type=%s, tool=%s, confidence=%.2f",
         decision.query_type.value, decision.suggested_tool, decision.confidence,
@@ -190,7 +247,7 @@ def run(
 
     # Step 2: Self-correction loop
     results, retries = self_correction_loop(
-        query, driver, openai_client, decision,
+        query, driver, openai_client, decision, trace=trace,
     )
 
     # Step 3: Generate answer
@@ -209,9 +266,19 @@ def run(
             qa_result = generate_answer(query, combined, openai_client=openai_client)
             retries += 1
 
+    # Build generator step
+    trace.generator_step = GeneratorStep(
+        model=str(cfg.openai.llm_model),
+        prompt_tokens=qa_result.prompt_tokens,
+        completion_tokens=qa_result.completion_tokens,
+        confidence=qa_result.confidence,
+    )
+    trace.total_duration_ms = int((time.perf_counter() - t_start) * 1000)
+
     # Enrich with metadata
     qa_result.retries = retries
     qa_result.router_decision = decision
+    qa_result.trace = trace
 
     logger.info(
         "Agent result: %d sources, %d retries, confidence=%.2f",
