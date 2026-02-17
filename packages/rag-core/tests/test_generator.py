@@ -65,7 +65,7 @@ class TestGenerateAnswer:
         call_args = client.chat.completions.create.call_args
         system_msg = call_args[1]["messages"][0]["content"]
         assert "enumeration" in system_msg.lower()
-        assert "COMPLETE list" in system_msg
+        assert "NUMBERED LIST" in system_msg
 
     def test_handles_api_error(self):
         client = MagicMock()

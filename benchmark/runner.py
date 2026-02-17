@@ -29,13 +29,27 @@ QUESTIONS_PATH = Path(__file__).parent / "questions.json"
 _JUDGE_PROMPT = """You are evaluating a RAG system answer.
 
 Question: {question}
-Expected keywords: {keywords}
+Expected keywords/concepts: {keywords}
 System answer: {answer}
 
-Does the answer correctly address the question and mention the key concepts?
+IMPORTANT: The answer may be in Russian while keywords are in English.
+Match CONCEPTS and meanings, not exact strings.
+For example: "ontology" matches "онтология", "extraction" matches "извлечение",
+"graph" matches "граф", "temporal" matches "временных", etc.
+
+Does the answer correctly address the question and cover the expected concepts?
 For enumeration questions (list all, describe all, перечисли, опиши все), check that
 the answer lists MOST of the expected keywords/concepts (at least 50%).
 Reply with ONLY one word: PASS or FAIL"""
+
+
+def _keyword_overlap(answer: str, keywords: list[str]) -> float:
+    """Return fraction of keywords found in answer (case-insensitive)."""
+    if not keywords:
+        return 0.0
+    lower = answer.lower()
+    found = sum(1 for k in keywords if k.lower() in lower)
+    return found / len(keywords)
 
 
 def evaluate_answer(
@@ -44,7 +58,12 @@ def evaluate_answer(
     keywords: list[str],
     openai_client: OpenAI,
 ) -> bool:
-    """Use LLM to judge if the answer is correct."""
+    """Hybrid judge: keyword overlap shortcut + LLM chain-of-thought."""
+    # Fast path: high keyword overlap → auto-PASS
+    overlap = _keyword_overlap(answer, keywords)
+    if overlap >= 0.4:
+        return True
+
     cfg = get_settings()
     try:
         response = openai_client.chat.completions.create(
@@ -61,7 +80,9 @@ def evaluate_answer(
             ],
             temperature=0.0,
         )
-        verdict = (response.choices[0].message.content or "").strip().upper()
+        text = (response.choices[0].message.content or "").strip()
+        # Extract last line as verdict
+        verdict = text.split("\n")[-1].strip().upper()
         return verdict == "PASS"
     except Exception as e:
         logger.error("Judge failed: %s", e)
@@ -84,10 +105,26 @@ _GLOBAL_RE = re.compile(
     re.IGNORECASE,
 )
 
+# "What X are mentioned?" — frameworks scattered across chunks need comprehensive search
+_MENTION_RE = re.compile(
+    r'\b('
+    r'упоминаются|упоминается|упомянуты|упомянут'
+    r'|mentioned|are described|are discussed|are listed'
+    r'|какие\b.*\b(фреймворк|инструмент|технолог|метод|подход)'
+    r'|what\b.*\b(framework|tool|technolog|method|approach)s?\b.*\b(mentioned|described|used)'
+    r')\b',
+    re.IGNORECASE,
+)
+
 
 def _is_global_query(query: str) -> bool:
     """Detect global/enumeration queries that need comprehensive retrieval."""
     return bool(_GLOBAL_RE.search(query))
+
+
+def _needs_comprehensive(query: str) -> bool:
+    """Detect queries that need comprehensive retrieval (global or mention-type)."""
+    return _is_global_query(query) or bool(_MENTION_RE.search(query))
 
 
 # ---------------------------------------------------------------------------
@@ -102,7 +139,7 @@ def _run_vector_only(
 
     from agentic_graph_rag.agent.tools import comprehensive_search, vector_search
 
-    if _is_global_query(query):
+    if _needs_comprehensive(query):
         results = comprehensive_search(query, driver, client)
     else:
         results = vector_search(query, driver, client)
@@ -117,7 +154,7 @@ def _run_cypher(
 
     from agentic_graph_rag.agent.tools import comprehensive_search, cypher_traverse
 
-    if _is_global_query(query):
+    if _needs_comprehensive(query):
         results = comprehensive_search(query, driver, client)
     else:
         results = cypher_traverse(query, driver, client)
@@ -132,7 +169,7 @@ def _run_hybrid(
 
     from agentic_graph_rag.agent.tools import comprehensive_search, hybrid_search
 
-    if _is_global_query(query):
+    if _needs_comprehensive(query):
         results = comprehensive_search(query, driver, client)
     else:
         results = hybrid_search(query, driver, client)

@@ -1,7 +1,13 @@
 """Tests for benchmark.runner and benchmark.compare."""
 
 from benchmark.compare import accuracy_by_type, compare_modes, compute_metrics
-from benchmark.runner import MODES, _is_global_query, load_questions
+from benchmark.runner import (
+    MODES,
+    _is_global_query,
+    _keyword_overlap,
+    _needs_comprehensive,
+    load_questions,
+)
 
 # ---------------------------------------------------------------------------
 # load_questions
@@ -49,6 +55,42 @@ class TestIsGlobalQuery:
         assert not _is_global_query("Что такое онтология?")
         assert not _is_global_query("How does Neo4j work?")
         assert not _is_global_query("When was GraphRAG introduced?")
+
+
+class TestNeedsComprehensive:
+    def test_global_queries(self):
+        assert _needs_comprehensive("Перечисли все компоненты")
+        assert _needs_comprehensive("List all components")
+
+    def test_mention_queries_russian(self):
+        assert _needs_comprehensive("Какие фреймворки для графовых баз знаний упоминаются?")
+        assert _needs_comprehensive("Какие инструменты упоминаются в документе?")
+        assert _needs_comprehensive("Какие технологии упоминаются?")
+
+    def test_mention_queries_english(self):
+        assert _needs_comprehensive("What frameworks are mentioned?")
+        assert _needs_comprehensive("What tools are described in the document?")
+
+    def test_non_comprehensive(self):
+        assert not _needs_comprehensive("Что такое онтология?")
+        assert not _needs_comprehensive("How does Neo4j work?")
+
+
+class TestKeywordOverlap:
+    def test_full_overlap(self):
+        assert _keyword_overlap("Graphiti and Cognee are frameworks", ["Graphiti", "Cognee"]) == 1.0
+
+    def test_partial_overlap(self):
+        assert _keyword_overlap("Graphiti is a framework", ["Graphiti", "Cognee"]) == 0.5
+
+    def test_no_overlap(self):
+        assert _keyword_overlap("Neo4j is great", ["Graphiti", "Cognee"]) == 0.0
+
+    def test_empty_keywords(self):
+        assert _keyword_overlap("some text", []) == 0.0
+
+    def test_case_insensitive(self):
+        assert _keyword_overlap("graphiti is mentioned", ["Graphiti"]) == 1.0
 
 
 # ---------------------------------------------------------------------------

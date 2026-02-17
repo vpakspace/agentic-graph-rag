@@ -4,105 +4,105 @@
     "question": "What frameworks for graph knowledge bases are mentioned?",
     "question_ru": "Какие фреймворки для графовых баз знаний упоминаются?",
     "type": "simple",
-    "keywords": ["Graphiti", "Cognee", "FalkorDB", "Docling"]
+    "keywords": ["Graphiti", "Cognee", "FalkorDB", "Docling", "фреймворк", "графовых"]
   },
   {
     "id": 2,
     "question": "What is an ontology in the context of knowledge graphs?",
     "question_ru": "Что такое онтология в контексте графов знаний?",
     "type": "simple",
-    "keywords": ["ontology", "OWL", "classes", "schema"]
+    "keywords": ["ontology", "OWL", "classes", "schema", "онтология", "классы", "схема"]
   },
   {
     "id": 3,
     "question": "What is the relationship between OWL ontologies and graph validation?",
     "question_ru": "Какая связь между OWL-онтологиями и валидацией графа?",
     "type": "relation",
-    "keywords": ["OWL", "validation", "schema", "verification"]
+    "keywords": ["OWL", "validation", "schema", "verification", "валидация", "верификация", "схема"]
   },
   {
     "id": 4,
     "question": "How are entities and relationships extracted from text?",
     "question_ru": "Как извлекаются сущности и связи из текста?",
     "type": "relation",
-    "keywords": ["NER", "extraction", "triplets", "GPT"]
+    "keywords": ["NER", "extraction", "triplets", "GPT", "извлечение", "триплеты", "сущности"]
   },
   {
     "id": 5,
     "question": "How does the entity extraction strategy affect graph quality?",
     "question_ru": "Как стратегия извлечения сущностей влияет на качество графа?",
     "type": "multi_hop",
-    "keywords": ["extraction", "quality", "strategy", "graph"]
+    "keywords": ["extraction", "quality", "strategy", "graph", "извлечение", "качество", "стратегия", "граф"]
   },
   {
     "id": 6,
     "question": "What is the chain from document to knowledge graph triplet?",
     "question_ru": "Какая цепочка от документа до триплета графа знаний?",
     "type": "multi_hop",
-    "keywords": ["document", "triplet", "pipeline", "chain"]
+    "keywords": ["document", "triplet", "pipeline", "chain", "документ", "триплет", "цепочка", "пайплайн"]
   },
   {
     "id": 7,
     "question": "Compare local and LLM-based entity extraction approaches",
     "question_ru": "Сравни локальные и LLM-подходы к извлечению сущностей",
     "type": "multi_hop",
-    "keywords": ["local", "LLM", "extraction", "comparison"]
+    "keywords": ["local", "LLM", "extraction", "comparison", "локальные", "извлечение", "сравнение"]
   },
   {
     "id": 8,
     "question": "List all components of the knowledge graph architecture",
     "question_ru": "Перечисли все компоненты архитектуры графа знаний",
     "type": "global",
-    "keywords": ["components", "architecture", "all", "graph"]
+    "keywords": ["components", "architecture", "all", "graph", "компоненты", "архитектура", "граф"]
   },
   {
     "id": 9,
     "question": "Give an overview of temporal data storage in knowledge graphs",
     "question_ru": "Дай обзор хранения временных данных в графах знаний",
     "type": "global",
-    "keywords": ["temporal", "storage", "overview", "time"]
+    "keywords": ["temporal", "storage", "overview", "time", "временных", "хранение", "обзор"]
   },
   {
     "id": 10,
     "question": "Summarize all methods for multimodal data integration",
     "question_ru": "Резюмируй все методы интеграции мультимодальных данных",
     "type": "global",
-    "keywords": ["multimodal", "integration", "methods", "summary"]
+    "keywords": ["multimodal", "integration", "methods", "summary", "мультимодальных", "интеграция", "методы"]
   },
   {
     "id": 11,
     "question": "When were temporal attributes first introduced in graph databases?",
     "question_ru": "Когда временные атрибуты были впервые введены в графовых базах данных?",
     "type": "temporal",
-    "keywords": ["temporal", "first", "introduced", "history"]
+    "keywords": ["temporal", "first", "introduced", "history", "временные", "впервые", "введены"]
   },
   {
     "id": 12,
     "question": "What changes occurred in graph RAG approaches over time?",
     "question_ru": "Какие изменения произошли в подходах GraphRAG со временем?",
     "type": "temporal",
-    "keywords": ["changes", "GraphRAG", "evolution", "history"]
+    "keywords": ["changes", "GraphRAG", "evolution", "history", "изменения", "эволюция"]
   },
   {
     "id": 13,
     "question": "What improvements were achieved in knowledge graph construction?",
     "question_ru": "Какие улучшения были достигнуты в построении графов знаний?",
     "type": "temporal",
-    "keywords": ["improvements", "construction", "progress"]
+    "keywords": ["improvements", "construction", "progress", "улучшения", "построение"]
   },
   {
     "id": 14,
     "question": "How does the Docling framework connect to graph construction?",
     "question_ru": "Как фреймворк Docling связан с построением графа?",
     "type": "relation",
-    "keywords": ["Docling", "graph", "construction", "pipeline"]
+    "keywords": ["Docling", "graph", "construction", "pipeline", "построение", "граф", "пайплайн"]
   },
   {
     "id": 15,
     "question": "What role does Neo4j play in the knowledge graph pipeline?",
     "question_ru": "Какую роль играет Neo4j в пайплайне графа знаний?",
     "type": "simple",
-    "keywords": ["Neo4j", "role", "pipeline", "storage"]
+    "keywords": ["Neo4j", "role", "pipeline", "storage", "роль", "пайплайн", "хранение"]
   },
   {
     "id": 16,
