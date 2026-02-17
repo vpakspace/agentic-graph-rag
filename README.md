@@ -166,7 +166,7 @@ docker run -d \
 ### Run Tests
 
 ```bash
-PYTHONPATH=.:pymangle pytest tests/ pymangle/ -x -q  # 393 tests, ~4 seconds
+PYTHONPATH=.:pymangle pytest tests/ pymangle/ -x -q  # 398 tests, ~4 seconds
 ```
 
 ### Run API Server (v6)
@@ -284,7 +284,7 @@ All settings via `.env` or environment variables:
 - **Graph Algorithms**: NetworkX (PageRank, KNN, PPR)
 - **API**: FastAPI (REST + MCP via FastMCP)
 - **UI**: Streamlit (7 tabs, httpx thin client)
-- **Testing**: pytest (393 tests) + ruff
+- **Testing**: pytest (398 tests) + ruff
 
 ## Streamlit UI Tabs
 
