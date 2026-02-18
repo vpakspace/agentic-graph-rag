@@ -12,3 +12,19 @@ data/*.pdf
 data/*.docx
 .venv/
 venv/
+
+# Playwright MCP logs
+.playwright-mcp/
+
+# Screenshots
+*.png
+
+# Source documents (ingestion input, not code)
+docs/
+
+# Old/intermediate benchmark results
+benchmark/results_v3.json
+benchmark/results_v12_full.json
+
+# Windows artifacts
+*:Zone.Identifier
