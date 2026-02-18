@@ -20,7 +20,9 @@ venv/
 *.png
 
 # Source documents (ingestion input, not code)
-docs/
+docs/*.pdf
+docs/*.txt
+docs/plans/
 
 # Old/intermediate benchmark results
 benchmark/results_v3.json
