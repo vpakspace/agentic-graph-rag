@@ -4,32 +4,34 @@
 
 A production-ready Graph RAG system combining four cutting-edge techniques from recent research into a unified retrieval pipeline with declarative reasoning, full pipeline provenance, and a typed API contract (FastAPI REST + MCP).
 
-## Benchmark Results (v12)
+## Benchmark Results (v14)
 
 Evaluated on **30 bilingual questions** (15 Doc1 Russian + 15 Doc2 English) across 6 retrieval modes = **180 evaluations**:
 
-| Mode | Total | Delta vs v11 | Description |
+| Mode | Total | Delta vs v12 | Description |
 |------|-------|-------------|-------------|
-| **Vector** | **28/30 (93%)** | +5 | Embedding similarity search |
-| **Cypher** | **28/30 (93%)** | +5 | Graph traversal via VectorCypher (3-hop) |
-| **Hybrid** | **28/30 (93%)** | +3 | Vector + Graph with cosine re-ranking |
-| **Agent (pattern)** | **28/30 (93%)** | +4 | Auto-routing via regex patterns + self-correction |
-| **Agent (LLM)** | **28/30 (93%)** | +5 | Auto-routing via GPT-4o-mini |
-| **Agent (Mangle)** | **28/30 (93%)** | +2 | Declarative Datalog rule routing + self-correction |
-| **Overall** | **168/180 (93%)** | **+24 (+13pp)** | |
+| **Vector** | **30/30 (100%)** | +2 | Embedding similarity search |
+| **Cypher** | **27/30 (90%)** | -1 | Graph traversal via VectorCypher (3-hop) |
+| **Hybrid** | **30/30 (100%)** | +2 | Vector + Graph with cosine re-ranking |
+| **Agent (pattern)** | **28/30 (93%)** | 0 | Auto-routing via regex patterns + self-correction |
+| **Agent (LLM)** | **29/30 (96%)** | +1 | Auto-routing via GPT-4o-mini |
+| **Agent (Mangle)** | **30/30 (100%)** | +2 | Declarative Datalog rule routing + self-correction |
+| **Overall** | **174/180 (96.7%)** | **+6 (+3.7pp)** | |
 
 Accuracy by query type (across all modes):
 
-| Type | Accuracy | Delta vs v11 |
+| Type | Accuracy | Delta vs v12 |
 |------|----------|-------------|
 | relation | 42/42 (100%) | — |
-| simple | 42/42 (100%) | +7 (was 83%) |
-| temporal | 24/24 (100%) | +5 (was 79%) |
-| multi_hop | 31/36 (86%) | +1 (was 83%) |
-| global | 29/36 (80%) | +11 (was 50%) |
+| simple | 41/42 (97%) | -1 |
+| temporal | 23/24 (95%) | -1 |
+| multi_hop | 34/36 (94%) | +3 (was 86%) |
+| global | 34/36 (94%) | +5 (was 80%) |
+
+**3 modes at 100%** (vector, hybrid, agent_mangle). **Zero persistent failures** — every question passes in at least 4/6 modes.
 
 <details>
-<summary>Benchmark history (v3 → v12)</summary>
+<summary>Benchmark history (v3 → v14)</summary>
 
 | Version | Questions | Overall | Key Changes |
 |---------|-----------|---------|-------------|
@@ -41,6 +43,7 @@ Accuracy by query type (across all modes):
 | v10 | 30 | 118/180 (65%) | 15 new Doc2 questions, co-occurrence expansion restored |
 | v11 | 30 | 144/180 (80%) | Enumeration prompt, global query detection, judge 2K |
 | v12 | 30 | 168/180 (93%) | Hybrid judge, smart mention routing, cross-doc detection, LiteLLM |
+| v14 | 30 | 174/180 (96.7%) | Semantic judge, cross-language retrieval routing, Q27 fixed |
 
 </details>
 
