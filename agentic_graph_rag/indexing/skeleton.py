@@ -147,13 +147,13 @@ def extract_entities_full(
 
     This is the expensive operation — applied only to top-β chunks.
     """
+    if not skeletal_chunks:
+        return [], []
+
     cfg = get_settings()
     if openai_client is None:
         from rag_core.config import make_openai_client
         openai_client = make_openai_client(cfg)
-
-    if not skeletal_chunks:
-        return [], []
 
     all_entities: list[Entity] = []
     all_relationships: list[Relationship] = []
