@@ -20,14 +20,13 @@ from dotenv import load_dotenv
 load_dotenv(os.path.join(os.path.dirname(os.path.dirname(__file__)), ".env"))
 
 from neo4j import GraphDatabase
-from openai import OpenAI
-from rag_core.config import get_settings
+from rag_core.config import get_settings, make_openai_client
 
 from benchmark.runner import load_questions, run_benchmark
 
 cfg = get_settings()
 driver = GraphDatabase.driver(cfg.neo4j.uri, auth=(cfg.neo4j.user, cfg.neo4j.password))
-openai_client = OpenAI(api_key=cfg.openai.api_key)
+openai_client = make_openai_client(cfg)
 
 # Only global questions
 all_questions = load_questions()

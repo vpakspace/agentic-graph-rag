@@ -15,6 +15,7 @@ class Neo4jSettings(BaseSettings):
 
 class OpenAISettings(BaseSettings):
     api_key: str = ""
+    base_url: str = ""  # LiteLLM proxy: e.g. "http://localhost:4000/v1"
     embedding_model: str = "text-embedding-3-small"
     embedding_dimensions: int = 1536
     llm_model: str = "gpt-4o"
@@ -66,3 +67,22 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Create settings instance loading from environment."""
     return Settings()
+
+
+def make_openai_client(settings: Settings | None = None):
+    """Create OpenAI client with optional LiteLLM proxy support.
+
+    If OPENAI_BASE_URL is set, uses it as base_url (e.g. LiteLLM proxy).
+    If api_key is empty and base_url is set, uses "none" as placeholder.
+    """
+    from openai import OpenAI
+
+    cfg = settings or get_settings()
+    kwargs: dict[str, str] = {}
+    if cfg.openai.api_key:
+        kwargs["api_key"] = cfg.openai.api_key
+    elif cfg.openai.base_url:
+        kwargs["api_key"] = "none"  # LiteLLM proxy doesn't need real key
+    if cfg.openai.base_url:
+        kwargs["base_url"] = cfg.openai.base_url
+    return OpenAI(**kwargs)

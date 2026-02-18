@@ -23,14 +23,13 @@ def create_app(service: PipelineService | None = None) -> FastAPI:
         if service is None:
             # Production: create service from config
             from neo4j import GraphDatabase
-            from openai import OpenAI
-            from rag_core.config import get_settings
+            from rag_core.config import get_settings, make_openai_client
 
             cfg = get_settings()
             driver = GraphDatabase.driver(
                 cfg.neo4j.uri, auth=(cfg.neo4j.user, cfg.neo4j.password),
             )
-            client = OpenAI(api_key=cfg.openai.api_key)
+            client = make_openai_client(cfg)
 
             reasoning = None
             try:

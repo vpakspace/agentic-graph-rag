@@ -14,11 +14,13 @@ from pymangle.ast_nodes import (
     NegAtom,
     Premise,
     Program,
+    TemporalAtom,
     TermType,
     Transform,
     Variable,
 )
 from pymangle.factstore import IndexedFactStore
+from pymangle.temporal import TemporalFactStore
 from pymangle.unifier import apply_subst, is_ground, unify
 
 logger = logging.getLogger(__name__)
@@ -33,6 +35,7 @@ def eval_program(
     store: IndexedFactStore | None = None,
     fact_limit: int = 100_000,
     externals: object | None = None,
+    temporal_store: TemporalFactStore | None = None,
 ) -> IndexedFactStore:
     """Evaluate a Mangle program using stratified semi-naive bottom-up evaluation.
 
@@ -262,10 +265,11 @@ def _solve_premises(
     if isinstance(premise, Atom):
         pattern = apply_subst(premise, subst)
         candidates = list(search_store.query(pattern))
-        # External predicate fallback
+        # External predicate fallback with filter pushdown
         if not candidates and externals is not None and hasattr(externals, "has") and externals.has(pattern.predicate):
             inputs = [a for a in pattern.args if isinstance(a, Constant)]
-            candidates = externals.query_as_atoms(pattern.predicate, inputs, [])
+            filters = _extract_filters(premises, idx, subst)
+            candidates = externals.query_as_atoms(pattern.predicate, inputs, filters)
         for fact in candidates:
             new_subst = unify(pattern, fact, subst)
             if new_subst is not None:
@@ -276,6 +280,25 @@ def _solve_premises(
         matches = store.query(pattern)
         if not matches:
             results.extend(_solve_premises(premises, idx + 1, subst, store, search_store, externals))
+
+    elif isinstance(premise, TemporalAtom):
+        # Evaluate the inner atom like a regular Atom
+        pattern = apply_subst(premise.atom, subst)
+        candidates = list(search_store.query(pattern))
+        if not candidates and externals is not None and hasattr(externals, "has") and externals.has(pattern.predicate):
+            inputs = [a for a in pattern.args if isinstance(a, Constant)]
+            candidates = externals.query_as_atoms(pattern.predicate, inputs, [])
+        for fact in candidates:
+            new_subst = unify(pattern, fact, subst)
+            if new_subst is not None:
+                # Bind interval variables if present
+                iv = premise.interval
+                iv_subst = dict(new_subst)
+                if isinstance(iv.start, Variable) and iv.start.name != "_":
+                    iv_subst.setdefault(iv.start.name, Constant("now", TermType.STRING))
+                if isinstance(iv.end, Variable) and iv.end.name != "_":
+                    iv_subst.setdefault(iv.end.name, Constant("inf", TermType.STRING))
+                results.extend(_solve_premises(premises, idx + 1, iv_subst, store, search_store, externals))
 
     elif isinstance(premise, Comparison):
         left = apply_subst(premise.left, subst)
@@ -338,6 +361,24 @@ def _solve_premises_delta(
         if not matches:
             results.extend(_solve_premises_delta(premises, idx + 1, delta_idx, subst, store, delta, externals))
 
+    elif isinstance(premise, TemporalAtom):
+        pattern = apply_subst(premise.atom, subst)
+        use_store = delta if idx == delta_idx else store
+        candidates = list(use_store.query(pattern))
+        if not candidates and idx != delta_idx and externals is not None and hasattr(externals, "has") and externals.has(pattern.predicate):
+            inputs = [a for a in pattern.args if isinstance(a, Constant)]
+            candidates = externals.query_as_atoms(pattern.predicate, inputs, [])
+        for fact in candidates:
+            new_subst = unify(pattern, fact, subst)
+            if new_subst is not None:
+                iv = premise.interval
+                iv_subst = dict(new_subst)
+                if isinstance(iv.start, Variable) and iv.start.name != "_":
+                    iv_subst.setdefault(iv.start.name, Constant("now", TermType.STRING))
+                if isinstance(iv.end, Variable) and iv.end.name != "_":
+                    iv_subst.setdefault(iv.end.name, Constant("inf", TermType.STRING))
+                results.extend(_solve_premises_delta(premises, idx + 1, delta_idx, iv_subst, store, delta, externals))
+
     elif isinstance(premise, Comparison):
         left = apply_subst(premise.left, subst)
         right = apply_subst(premise.right, subst)
@@ -359,6 +400,35 @@ def _solve_premises_delta(
                 results.extend(_solve_premises_delta(premises, idx + 1, delta_idx, subst, store, delta, externals))
 
     return results
+
+
+def _extract_filters(
+    premises: tuple[Premise, ...],
+    current_idx: int,
+    subst: dict[str, object],
+) -> list[dict[str, object]]:
+    """Extract Comparison premises as filter dicts for external predicate pushdown.
+
+    Looks at Comparison premises after the current atom to find filters
+    that reference variables bound by the current atom and a ground value.
+    Returns list of {"var": name, "op": op, "value": value} dicts.
+    """
+    filters: list[dict[str, object]] = []
+    for i in range(current_idx + 1, len(premises)):
+        p = premises[i]
+        if not isinstance(p, Comparison):
+            continue
+        left = apply_subst(p.left, subst)
+        right = apply_subst(p.right, subst)
+        if isinstance(left, Variable) and is_ground(right):
+            val = right.value if isinstance(right, Constant) else right
+            filters.append({"var": left.name, "op": p.op, "value": val})
+        elif is_ground(left) and isinstance(right, Variable):
+            val = left.value if isinstance(left, Constant) else left
+            # Flip operator for reversed comparison
+            flip = {"<": ">", ">": "<", "<=": ">=", ">=": "<="}
+            filters.append({"var": right.name, "op": flip.get(p.op, p.op), "value": val})
+    return filters
 
 
 def _eval_comparison(left: object, right: object, op: str) -> bool:

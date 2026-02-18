@@ -218,9 +218,8 @@ def run(
     """
     cfg = get_settings()
     if openai_client is None:
-        from openai import OpenAI
-
-        openai_client = OpenAI(api_key=cfg.openai.api_key)
+        from rag_core.config import make_openai_client
+        openai_client = make_openai_client(cfg)
 
     t_start = time.perf_counter()
     trace = PipelineTrace(

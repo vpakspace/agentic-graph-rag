@@ -127,17 +127,26 @@ class TestReasoningEngine:
         assert result is None
 
     def test_check_access(self, tmp_path):
-        """ReasoningEngine checks access control rules."""
+        """ReasoningEngine checks access control rules with full RBAC."""
         from agentic_graph_rag.reasoning.reasoning_engine import ReasoningEngine
 
         rules_dir = tmp_path / "rules"
         rules_dir.mkdir()
         (rules_dir / "access.mg").write_text(
-            'permit("admin", "delete").\n'
-            'permit("viewer", "read").\n'
-            'denied(Role, Action) :- !permit(Role, Action).\n'
+            'role_inherits(/admin, /viewer).\n'
+            'has_role(User, Role) :- user_role(User, Role).\n'
+            'has_role(User, Parent) :- has_role(User, Child), role_inherits(Child, Parent).\n'
+            'permit(/viewer, /read, /public).\n'
+            'permit(/admin, /read, /sensitive).\n'
+            'allowed(User, Action, ResType) :- has_role(User, Role), permit(Role, Action, ResType).\n'
         )
 
         engine = ReasoningEngine(str(rules_dir))
-        assert engine.check_access("admin", "delete") is True
-        assert engine.check_access("viewer", "delete") is False
+        # Admin can read sensitive
+        assert engine.check_access("alice", "/admin", "/read", "/sensitive") is True
+        # Admin inherits viewer permissions (public)
+        assert engine.check_access("alice", "/admin", "/read", "/public") is True
+        # Viewer can read public
+        assert engine.check_access("bob", "/viewer", "/read", "/public") is True
+        # Viewer cannot read sensitive
+        assert engine.check_access("bob", "/viewer", "/read", "/sensitive") is False

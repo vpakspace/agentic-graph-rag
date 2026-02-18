@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from rag_core.config import get_settings
+from rag_core.config import get_settings, make_openai_client
 
 if TYPE_CHECKING:
     from openai import OpenAI
@@ -21,9 +21,7 @@ def expand_query(query: str, openai_client: OpenAI | None = None) -> str:
     """Expand short query into detailed technical question using LLM."""
     cfg = get_settings()
     if openai_client is None:
-        from openai import OpenAI
-
-        openai_client = OpenAI(api_key=cfg.openai.api_key)
+        openai_client = make_openai_client(cfg)
 
     system_prompt = (
         "You are a query expansion expert. "
@@ -52,9 +50,7 @@ def generate_multi_queries(
     """Generate n alternative formulations of the query using LLM."""
     cfg = get_settings()
     if openai_client is None:
-        from openai import OpenAI
-
-        openai_client = OpenAI(api_key=cfg.openai.api_key)
+        openai_client = make_openai_client(cfg)
 
     system_prompt = (
         f"You are a query reformulation expert. "

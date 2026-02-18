@@ -265,6 +265,7 @@ class TestRun:
     def test_creates_client_when_none(self, mock_settings, mock_classify, mock_loop, mock_gen, _mock_compl):
         cfg = MagicMock()
         cfg.openai.api_key = "key"
+        cfg.openai.base_url = ""
         mock_settings.return_value = cfg
         mock_classify.return_value = _make_decision()
         mock_loop.return_value = (_make_results(1), 0)
@@ -272,10 +273,10 @@ class TestRun:
 
         driver = MagicMock()
 
-        with patch("openai.OpenAI") as mock_cls:
-            mock_cls.return_value = MagicMock()
+        with patch("rag_core.config.make_openai_client") as mock_make:
+            mock_make.return_value = MagicMock()
             run("q", driver)
-            mock_cls.assert_called_once_with(api_key="key")
+            mock_make.assert_called_once_with(cfg)
 
 
 # ---------------------------------------------------------------------------

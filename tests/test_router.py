@@ -129,19 +129,20 @@ class TestClassifyByLLM:
     def test_creates_client_when_none(self, mock_settings):
         cfg = MagicMock()
         cfg.openai.api_key = "test-key"
+        cfg.openai.base_url = ""
         cfg.openai.llm_model_mini = "gpt-4o-mini"
         mock_settings.return_value = cfg
 
-        with patch("openai.OpenAI") as mock_cls:
+        with patch("agentic_graph_rag.agent.router.make_openai_client") as mock_make:
             mock_client = MagicMock()
             resp = MagicMock()
             resp.choices = [MagicMock()]
             resp.choices[0].message.content = "simple"
             mock_client.chat.completions.create.return_value = resp
-            mock_cls.return_value = mock_client
+            mock_make.return_value = mock_client
 
             d = classify_query_by_llm("test query")
-            mock_cls.assert_called_once_with(api_key="test-key")
+            mock_make.assert_called_once_with(cfg)
             assert d.query_type == QueryType.SIMPLE
 
 

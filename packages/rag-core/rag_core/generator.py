@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from rag_core.config import get_settings
+from rag_core.config import get_settings, make_openai_client
 from rag_core.models import QAResult, SearchResult
 
 if TYPE_CHECKING:
@@ -43,9 +43,7 @@ def generate_answer(
     """Generate answer from query and retrieved chunks using LLM."""
     cfg = get_settings()
     if openai_client is None:
-        from openai import OpenAI
-
-        openai_client = OpenAI(api_key=cfg.openai.api_key)
+        openai_client = make_openai_client(cfg)
 
     if not results:
         logger.warning("No results provided for answer generation")

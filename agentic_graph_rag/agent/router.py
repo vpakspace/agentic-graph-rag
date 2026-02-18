@@ -10,7 +10,7 @@ import logging
 import re
 from typing import TYPE_CHECKING
 
-from rag_core.config import get_settings
+from rag_core.config import get_settings, make_openai_client
 from rag_core.models import QueryType, RouterDecision
 
 if TYPE_CHECKING:
@@ -126,9 +126,7 @@ def classify_query_by_llm(
     """Classify query using LLM for higher accuracy."""
     cfg = get_settings()
     if openai_client is None:
-        from openai import OpenAI
-
-        openai_client = OpenAI(api_key=cfg.openai.api_key)
+        openai_client = make_openai_client(cfg)
 
     try:
         response = openai_client.chat.completions.create(

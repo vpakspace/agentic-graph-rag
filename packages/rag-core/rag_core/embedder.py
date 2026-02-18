@@ -8,9 +8,7 @@ from __future__ import annotations
 
 import logging
 
-import openai
-
-from rag_core.config import get_settings
+from rag_core.config import get_settings, make_openai_client
 from rag_core.models import Chunk
 
 logger = logging.getLogger(__name__)
@@ -26,7 +24,7 @@ def embed_chunks(chunks: list[Chunk]) -> list[Chunk]:
         return chunks
 
     cfg = get_settings()
-    client = openai.OpenAI(api_key=cfg.openai.api_key)
+    client = make_openai_client(cfg)
 
     texts = [chunk.enriched_content for chunk in chunks]
 

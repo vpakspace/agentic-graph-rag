@@ -8,11 +8,13 @@ from __future__ import annotations
 
 import logging
 import time
+from typing import TYPE_CHECKING
 
-import openai
-
-from rag_core.config import get_settings
+from rag_core.config import get_settings, make_openai_client
 from rag_core.models import Chunk
+
+if TYPE_CHECKING:
+    from openai import OpenAI
 
 logger = logging.getLogger(__name__)
 
@@ -30,7 +32,7 @@ def enrich_chunks(
         return chunks
 
     cfg = get_settings()
-    client = openai.OpenAI(api_key=cfg.openai.api_key)
+    client = make_openai_client(cfg)
 
     if not document_summary:
         document_summary = _generate_summary(chunks[:3], client, cfg.openai.llm_model)
@@ -58,7 +60,7 @@ def enrich_chunks(
 
 
 def _generate_summary(
-    chunks: list[Chunk], client: openai.OpenAI, model: str,
+    chunks: list[Chunk], client: OpenAI, model: str,
 ) -> str:
     """Generate document summary from first few chunks."""
     combined = "\n\n".join(c.content for c in chunks)
@@ -82,7 +84,7 @@ def _generate_summary(
 
 
 def _generate_context(
-    chunk_content: str, document_summary: str, client: openai.OpenAI, model: str,
+    chunk_content: str, document_summary: str, client: OpenAI, model: str,
 ) -> str:
     """Generate 1-2 sentence context for a chunk."""
     prompt = (

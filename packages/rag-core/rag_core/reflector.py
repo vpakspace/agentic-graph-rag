@@ -9,7 +9,7 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
-from rag_core.config import get_settings
+from rag_core.config import get_settings, make_openai_client
 from rag_core.models import SearchResult
 
 if TYPE_CHECKING:
@@ -27,9 +27,7 @@ def evaluate_relevance(
     """
     cfg = get_settings()
     if openai_client is None:
-        from openai import OpenAI
-
-        openai_client = OpenAI(api_key=cfg.openai.api_key)
+        openai_client = make_openai_client(cfg)
 
     if not results:
         logger.warning("No results to evaluate")
@@ -85,9 +83,7 @@ def generate_retry_query(
     """Generate an improved query based on what was found (and what was missing)."""
     cfg = get_settings()
     if openai_client is None:
-        from openai import OpenAI
-
-        openai_client = OpenAI(api_key=cfg.openai.api_key)
+        openai_client = make_openai_client(cfg)
 
     if results:
         summary_parts = []
@@ -128,9 +124,7 @@ def evaluate_completeness(
     """
     cfg = get_settings()
     if openai_client is None:
-        from openai import OpenAI
-
-        openai_client = OpenAI(api_key=cfg.openai.api_key)
+        openai_client = make_openai_client(cfg)
 
     prompt = (
         "You are evaluating an answer for completeness.\n"

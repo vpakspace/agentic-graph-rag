@@ -326,9 +326,8 @@ def embed_phrase_nodes(
     """
     cfg = get_settings()
     if openai_client is None:
-        from openai import OpenAI as _OpenAI
-
-        openai_client = _OpenAI(api_key=cfg.openai.api_key)
+        from rag_core.config import make_openai_client
+        openai_client = make_openai_client(cfg)
 
     if not phrase_nodes:
         return 0

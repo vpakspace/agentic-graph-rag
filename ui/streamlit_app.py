@@ -62,9 +62,9 @@ def _get_neo4j_driver():
 
 @st.cache_resource
 def _get_openai_client():
-    from openai import OpenAI
+    from rag_core.config import make_openai_client
     cfg = get_settings()
-    return OpenAI(api_key=cfg.openai.api_key)
+    return make_openai_client(cfg)
 
 
 @st.cache_resource
@@ -614,7 +614,7 @@ with tab_reasoning:
 
                 access_src = _default_sources.get("access", rules_text) if _selected_source != "access" else rules_text
                 engine = ReasoningEngine.from_sources({"access": access_src})
-                allowed = engine.check_access(access_role, access_action)
+                allowed = engine.check_access("test_user", access_role, access_action)
                 if allowed:
                     st.success(t("reasoning_access_allowed"))
                 else:

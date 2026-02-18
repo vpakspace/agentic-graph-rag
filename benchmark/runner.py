@@ -60,8 +60,10 @@ def evaluate_answer(
 ) -> bool:
     """Hybrid judge: keyword overlap shortcut + LLM chain-of-thought."""
     # Fast path: high keyword overlap → auto-PASS
+    # Enumeration queries need higher threshold (most items, not just 40%)
     overlap = _keyword_overlap(answer, keywords)
-    if overlap >= 0.4:
+    threshold = 0.65 if _is_global_query(question) else 0.4
+    if overlap >= threshold:
         return True
 
     cfg = get_settings()
@@ -124,7 +126,27 @@ def _is_global_query(query: str) -> bool:
 
 def _needs_comprehensive(query: str) -> bool:
     """Detect queries that need comprehensive retrieval (global or mention-type)."""
-    return _is_global_query(query) or bool(_MENTION_RE.search(query))
+    return _is_global_query(query) or bool(_MENTION_RE.search(query)) or _is_cross_language_query(query)
+
+
+# Cross-language detection: RU question about EN-only concepts (Doc2)
+_DOC2_CONCEPTS_RE = re.compile(
+    r'\b('
+    r'semantic\s+c(ore|ompanion)|SCL|companion\s+layer'
+    r'|семантическ\w*\s+(ядр|компаньон|слой)'
+    r'|семантического\s+ядра|семантическое\s+ядро'
+    r'|пайплайн\w*\s+семантическ'
+    r')\b',
+    re.IGNORECASE,
+)
+
+
+def _is_cross_language_query(query: str) -> bool:
+    """Detect RU queries that target EN Document 2 (SCL) content."""
+    # If query is in Russian but references Doc2-specific concepts
+    has_cyrillic = bool(re.search(r'[а-яА-ЯёЁ]', query))
+    has_doc2_concept = bool(_DOC2_CONCEPTS_RE.search(query))
+    return has_cyrillic and has_doc2_concept
 
 
 # ---------------------------------------------------------------------------

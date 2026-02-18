@@ -430,8 +430,9 @@ def comprehensive_search(
     if top_k is None:
         top_k = 25  # large for comprehensive coverage
 
-    # Generate sub-queries via LLM (5 diverse angles)
-    sub_queries = _generate_sub_queries(query, openai_client, cfg.openai.llm_model_mini, n=5)
+    # Detect enumeration count for dynamic sub-query generation
+    n_sub = _detect_enumeration_count(query)
+    sub_queries = _generate_sub_queries(query, openai_client, cfg.openai.llm_model_mini, n=n_sub)
 
     # Fan-out: run vector search for each sub-query
     all_results: list[list[SearchResult]] = []
@@ -439,8 +440,9 @@ def comprehensive_search(
         results = vector_search(sq, driver, openai_client, top_k=cfg.retrieval.top_k_vector)
         all_results.append(results)
 
-    # Also add full_document_read for broad coverage
-    full_results = full_document_read(query, driver, openai_client, top_k=20)
+    # Full document read — larger top_k for enumerations
+    full_top_k = 40 if n_sub > 5 else 20
+    full_results = full_document_read(query, driver, openai_client, top_k=full_top_k)
     all_results.append(full_results)
 
     # Merge all result lists via cascading RRF
@@ -457,6 +459,50 @@ def comprehensive_search(
 
     logger.info("Comprehensive search: %d results from %d sub-queries + full_read", len(merged), len(sub_queries))
     return merged
+
+
+_ENUM_COUNT_RE = None
+
+
+def _detect_enumeration_count(query: str) -> int:
+    """Detect number of items requested in enumeration queries.
+
+    Extracts numbers like "seven", "7", "три" etc. from the query.
+    Returns detected count (min 5, max 12) or default 5.
+    """
+    global _ENUM_COUNT_RE  # noqa: PLW0603
+    if _ENUM_COUNT_RE is None:
+        import re
+        _ENUM_COUNT_RE = re.compile(
+            r'\b('
+            # English number words
+            r'two|three|four|five|six|seven|eight|nine|ten|eleven|twelve'
+            # Russian number words
+            r'|два|две|три|четыре|пять|шесть|семь|восемь|девять|десять'
+            # Digits
+            r'|\d{1,2}'
+            r')\b',
+            re.IGNORECASE,
+        )
+
+    word_to_num = {
+        "two": 2, "three": 3, "four": 4, "five": 5, "six": 6,
+        "seven": 7, "eight": 8, "nine": 9, "ten": 10, "eleven": 11, "twelve": 12,
+        "два": 2, "две": 2, "три": 3, "четыре": 4, "пять": 5, "шесть": 6,
+        "семь": 7, "восемь": 8, "девять": 9, "десять": 10,
+    }
+
+    match = _ENUM_COUNT_RE.search(query)
+    if match:
+        val = match.group(1).lower()
+        n = word_to_num.get(val)
+        if n is None:
+            try:
+                n = int(val)
+            except ValueError:
+                n = 5
+        return max(5, min(n + 2, 12))  # add 2 for coverage margin, cap at 12
+    return 5
 
 
 def _generate_sub_queries(
