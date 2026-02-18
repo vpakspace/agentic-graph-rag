@@ -127,7 +127,7 @@ agentic-graph-rag/
 │   └── compare.py             # Comparison table generator
 │
 ├── run_api.py                 # API launcher (uvicorn, port 8507)
-└── tests/                     # 407 unit tests (299 core + 108 pymangle)
+└── tests/                     # 454 unit tests (346 core + 108 pymangle)
 ```
 
 ## Quick Start
@@ -167,7 +167,7 @@ docker run -d \
 ### Run Tests
 
 ```bash
-PYTHONPATH=.:pymangle pytest tests/ pymangle/ -x -q  # 407 tests, ~4 seconds
+PYTHONPATH=.:pymangle pytest tests/ pymangle/ -x -q  # 454 tests, ~4 seconds
 ```
 
 ### Run API Server (v6)
@@ -285,7 +285,7 @@ All settings via `.env` or environment variables:
 - **Graph Algorithms**: NetworkX (PageRank, KNN, PPR)
 - **API**: FastAPI (REST + MCP via FastMCP)
 - **UI**: Streamlit (7 tabs, httpx thin client)
-- **Testing**: pytest (407 tests) + ruff
+- **Testing**: pytest (454 tests) + ruff
 
 ## Streamlit UI Tabs
 
