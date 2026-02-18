@@ -4,32 +4,32 @@
 
 A production-ready Graph RAG system combining four cutting-edge techniques from recent research into a unified retrieval pipeline with declarative reasoning, full pipeline provenance, and a typed API contract (FastAPI REST + MCP).
 
-## Benchmark Results (v11)
+## Benchmark Results (v12)
 
 Evaluated on **30 bilingual questions** (15 Doc1 Russian + 15 Doc2 English) across 6 retrieval modes = **180 evaluations**:
 
-| Mode | Total | Description |
-|------|-------|-------------|
-| **Agent (Mangle)** | **26/30 (86%)** | Declarative Datalog rule routing + self-correction |
-| **Hybrid** | **25/30 (83%)** | Vector + Graph with cosine re-ranking |
-| **Agent (pattern)** | **24/30 (80%)** | Auto-routing via regex patterns + self-correction |
-| **Vector** | **23/30 (76%)** | Embedding similarity search |
-| **Cypher** | **23/30 (76%)** | Graph traversal via VectorCypher (3-hop) |
-| **Agent (LLM)** | **23/30 (76%)** | Auto-routing via GPT-4o-mini |
-| **Overall** | **144/180 (80%)** | **+15pp vs v10** |
+| Mode | Total | Delta vs v11 | Description |
+|------|-------|-------------|-------------|
+| **Vector** | **28/30 (93%)** | +5 | Embedding similarity search |
+| **Cypher** | **28/30 (93%)** | +5 | Graph traversal via VectorCypher (3-hop) |
+| **Hybrid** | **28/30 (93%)** | +3 | Vector + Graph with cosine re-ranking |
+| **Agent (pattern)** | **28/30 (93%)** | +4 | Auto-routing via regex patterns + self-correction |
+| **Agent (LLM)** | **28/30 (93%)** | +5 | Auto-routing via GPT-4o-mini |
+| **Agent (Mangle)** | **28/30 (93%)** | +2 | Declarative Datalog rule routing + self-correction |
+| **Overall** | **168/180 (93%)** | **+24 (+13pp)** | |
 
 Accuracy by query type (across all modes):
 
-| Type | Accuracy | Notes |
-|------|----------|-------|
-| relation | 42/42 (100%) | Perfect score |
-| multi_hop | 30/36 (83%) | Agent escalation effective |
-| simple | 35/42 (83%) | Improved via enumeration prompts |
-| temporal | 19/24 (79%) | Temporal boost helps |
-| global | 18/36 (50%) | +9pp vs v10; enumeration prompt + comprehensive search |
+| Type | Accuracy | Delta vs v11 |
+|------|----------|-------------|
+| relation | 42/42 (100%) | — |
+| simple | 42/42 (100%) | +7 (was 83%) |
+| temporal | 24/24 (100%) | +5 (was 79%) |
+| multi_hop | 31/36 (86%) | +1 (was 83%) |
+| global | 29/36 (80%) | +11 (was 50%) |
 
 <details>
-<summary>Benchmark history (v3 → v11)</summary>
+<summary>Benchmark history (v3 → v12)</summary>
 
 | Version | Questions | Overall | Key Changes |
 |---------|-----------|---------|-------------|
@@ -39,7 +39,8 @@ Accuracy by query type (across all modes):
 | v7 | 20 | 87/120 (73%) | Dual-document (Doc1 RU + Doc2 EN), RELATED_TO edges |
 | v9 | 20 | 84/120 (70%) | Hybrid cosine re-ranking (replaced RRF) |
 | v10 | 30 | 118/180 (65%) | 15 new Doc2 questions, co-occurrence expansion restored |
-| v11 | 30 | 144/180 (80%) | Enumeration prompt, global query detection, judge 2K, comprehensive+full_read retry |
+| v11 | 30 | 144/180 (80%) | Enumeration prompt, global query detection, judge 2K |
+| v12 | 30 | 168/180 (93%) | Hybrid judge, smart mention routing, cross-doc detection, LiteLLM |
 
 </details>
 
@@ -126,7 +127,7 @@ agentic-graph-rag/
 │   └── compare.py             # Comparison table generator
 │
 ├── run_api.py                 # API launcher (uvicorn, port 8507)
-└── tests/                     # 398 unit tests (290 core + 108 pymangle)
+└── tests/                     # 407 unit tests (299 core + 108 pymangle)
 ```
 
 ## Quick Start
@@ -166,7 +167,7 @@ docker run -d \
 ### Run Tests
 
 ```bash
-PYTHONPATH=.:pymangle pytest tests/ pymangle/ -x -q  # 398 tests, ~4 seconds
+PYTHONPATH=.:pymangle pytest tests/ pymangle/ -x -q  # 407 tests, ~4 seconds
 ```
 
 ### Run API Server (v6)
@@ -284,7 +285,7 @@ All settings via `.env` or environment variables:
 - **Graph Algorithms**: NetworkX (PageRank, KNN, PPR)
 - **API**: FastAPI (REST + MCP via FastMCP)
 - **UI**: Streamlit (7 tabs, httpx thin client)
-- **Testing**: pytest (398 tests) + ruff
+- **Testing**: pytest (407 tests) + ruff
 
 ## Streamlit UI Tabs
 
