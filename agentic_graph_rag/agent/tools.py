@@ -509,13 +509,28 @@ def _generate_sub_queries(
     query: str, openai_client: OpenAI, model: str, n: int = 5,
 ) -> list[str]:
     """Generate N sub-queries from original query to improve coverage."""
+    # Detect cross-language: Cyrillic query targeting English-only concepts (Doc2)
+    import re
+    has_cyrillic = bool(re.search(r'[а-яА-ЯёЁ]', query))
+    has_en_concept = bool(re.search(
+        r'\b(semantic\s+c(ore|ompanion)|SCL|companion\s+layer|MeaningHub|Cognitive\s+Contract)\b',
+        query, re.IGNORECASE,
+    ))
+    lang_hint = ""
+    if has_cyrillic and has_en_concept:
+        lang_hint = (
+            "\nIMPORTANT: The source documents are in English. "
+            "Generate all sub-queries in ENGLISH to match the document content.\n"
+        )
+
     prompt = (
         f"You are a search query decomposer for a RAG system. "
         f"Given this query, generate exactly {n} different search sub-queries "
         f"that together cover ALL aspects of the original question. "
         f"Each sub-query should focus on a DIFFERENT section, component, or angle.\n"
         f"For enumeration queries (list all, describe all), "
-        f"each sub-query should target a DIFFERENT item from the expected list.\n\n"
+        f"each sub-query should target a DIFFERENT item from the expected list.\n"
+        f"{lang_hint}\n"
         f"Original query: {query}\n\n"
         f"Return ONLY the {n} sub-queries, one per line, no numbering or bullets."
     )

@@ -186,7 +186,8 @@
     "question": "List all seven architectural decisions described in the Semantic Companion Layer design",
     "question_ru": "Перечисли все семь архитектурных решений, описанных в дизайне Semantic Companion Layer",
     "type": "global",
-    "keywords": ["decisions", "GraphQL", "multi-backend", "ConstraintSet", "MCP", "packs", "Strawberry", "SDL"]
+    "keywords": ["decisions", "GraphQL", "multi-backend", "ConstraintSet", "MCP", "packs", "Strawberry", "SDL"],
+    "reference_answer": "Seven architectural decisions: 1) Northbound contract — GraphQL as stable typed interface, 2) Multi-backend strategy — facade pattern over SPARQL/Cypher/Vector, 3) Output contract — return ConstraintSet with provenance, 4) Dual northbound interfaces — GraphQL + MCP, 5) Schema stability — push variability to packs, 6) Implementation choice — Strawberry code-first, 7) Documentation integrity — generate SDL and enforce via CI"
   },
   {
     "id": 28,

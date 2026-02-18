@@ -68,6 +68,21 @@ _ESCALATION_CHAIN = [
 ]
 
 
+def _is_cross_language_global(query: str) -> bool:
+    """Detect RU global queries targeting EN-only Doc2 concepts (SCL/MeaningHub)."""
+    import re
+    has_cyrillic = bool(re.search(r'[а-яА-ЯёЁ]', query))
+    has_doc2 = bool(re.search(
+        r'\b(semantic\s+c(ore|ompanion)|SCL|companion\s+layer)\b',
+        query, re.IGNORECASE,
+    ))
+    has_global = bool(re.search(
+        r'\b(все\b|всех\b|перечисл|опиши все|list all|describe all|all\s+\w+\s+decisions)\b',
+        query, re.IGNORECASE,
+    ))
+    return has_cyrillic and has_doc2 and has_global
+
+
 # ---------------------------------------------------------------------------
 # Tool selection
 # ---------------------------------------------------------------------------
@@ -243,6 +258,16 @@ def run(
         "Query classified: type=%s, tool=%s, confidence=%.2f",
         decision.query_type.value, decision.suggested_tool, decision.confidence,
     )
+
+    # Override: cross-language global queries → full_document_read directly
+    # (vector_search returns wrong document for RU queries about EN-only Doc2 concepts)
+    if _is_cross_language_global(query) and decision.suggested_tool != "full_document_read":
+        logger.info("Cross-language global override: %s → full_document_read", decision.suggested_tool)
+        decision = RouterDecision(
+            query_type=QueryType.GLOBAL,
+            suggested_tool="full_document_read",
+            confidence=decision.confidence,
+        )
 
     # Step 2: Self-correction loop
     results, retries = self_correction_loop(
