@@ -86,21 +86,20 @@ class TestGenerateAnswer:
         qa = generate_answer("q", results, openai_client=client)
         assert qa.answer == ""
 
+    @patch("rag_core.generator.make_openai_client")
     @patch("rag_core.generator.get_settings")
-    def test_creates_client_when_none(self, mock_settings):
+    def test_creates_client_when_none(self, mock_settings, mock_make_client):
         cfg = MagicMock()
-        cfg.openai.api_key = "sk-test"
         cfg.openai.llm_model = "gpt-4o-mini"
         cfg.openai.llm_temperature = 0.1
         mock_settings.return_value = cfg
 
-        with patch("openai.OpenAI") as mock_cls:
-            mock_client = MagicMock()
-            mock_client.chat.completions.create.return_value = _mock_openai_response(
-                "answer"
-            )
-            mock_cls.return_value = mock_client
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = _mock_openai_response(
+            "answer"
+        )
+        mock_make_client.return_value = mock_client
 
-            qa = generate_answer("q", [_make_result()])
-            mock_cls.assert_called_once_with(api_key="sk-test")
-            assert qa.answer == "answer"
+        qa = generate_answer("q", [_make_result()])
+        mock_make_client.assert_called_once_with(cfg)
+        assert qa.answer == "answer"

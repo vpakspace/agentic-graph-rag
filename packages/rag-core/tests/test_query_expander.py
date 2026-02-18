@@ -41,23 +41,22 @@ class TestExpandQuery:
         result = expand_query("original query", openai_client=client)
         assert result == "original query"
 
+    @patch("rag_core.query_expander.make_openai_client")
     @patch("rag_core.query_expander.get_settings")
-    def test_creates_client_when_none(self, mock_settings):
+    def test_creates_client_when_none(self, mock_settings, mock_make_client):
         cfg = MagicMock()
-        cfg.openai.api_key = "sk-test"
         cfg.openai.llm_model = "gpt-4o-mini"
         mock_settings.return_value = cfg
 
-        with patch("openai.OpenAI") as mock_cls:
-            mock_client = MagicMock()
-            mock_client.chat.completions.create.return_value = _mock_openai_response(
-                "expanded"
-            )
-            mock_cls.return_value = mock_client
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = _mock_openai_response(
+            "expanded"
+        )
+        mock_make_client.return_value = mock_client
 
-            result = expand_query("test")
-            mock_cls.assert_called_once_with(api_key="sk-test")
-            assert result == "expanded"
+        result = expand_query("test")
+        mock_make_client.assert_called_once_with(cfg)
+        assert result == "expanded"
 
 
 class TestGenerateMultiQueries:
@@ -108,20 +107,19 @@ class TestGenerateMultiQueries:
         assert len(result) == 2
         assert result[0] == "fallback"
 
+    @patch("rag_core.query_expander.make_openai_client")
     @patch("rag_core.query_expander.get_settings")
-    def test_creates_client_when_none(self, mock_settings):
+    def test_creates_client_when_none(self, mock_settings, mock_make_client):
         cfg = MagicMock()
-        cfg.openai.api_key = "sk-test"
         cfg.openai.llm_model = "gpt-4o-mini"
         mock_settings.return_value = cfg
 
-        with patch("openai.OpenAI") as mock_cls:
-            mock_client = MagicMock()
-            mock_client.chat.completions.create.return_value = _mock_openai_response(
-                "A\nB\nC"
-            )
-            mock_cls.return_value = mock_client
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = _mock_openai_response(
+            "A\nB\nC"
+        )
+        mock_make_client.return_value = mock_client
 
-            result = generate_multi_queries("test", n=3)
-            mock_cls.assert_called_once_with(api_key="sk-test")
-            assert len(result) == 3
+        result = generate_multi_queries("test", n=3)
+        mock_make_client.assert_called_once_with(cfg)
+        assert len(result) == 3

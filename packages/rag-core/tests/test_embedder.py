@@ -11,11 +11,10 @@ class TestEmbedChunks:
     def test_empty_list(self):
         assert embed_chunks([]) == []
 
-    @patch("rag_core.embedder.openai")
+    @patch("rag_core.embedder.make_openai_client")
     @patch("rag_core.embedder.get_settings")
-    def test_embeds_chunks(self, mock_settings, mock_openai):
+    def test_embeds_chunks(self, mock_settings, mock_make_client):
         cfg = MagicMock()
-        cfg.openai.api_key = "sk-test"
         cfg.openai.embedding_model = "text-embedding-3-small"
         mock_settings.return_value = cfg
 
@@ -30,7 +29,7 @@ class TestEmbedChunks:
 
         mock_client = MagicMock()
         mock_client.embeddings.create.return_value = mock_response
-        mock_openai.OpenAI.return_value = mock_client
+        mock_make_client.return_value = mock_client
 
         chunks = [Chunk(content="hello"), Chunk(content="world")]
         result = embed_chunks(chunks)
@@ -43,11 +42,10 @@ class TestEmbedChunks:
         call_args = mock_client.embeddings.create.call_args
         assert call_args.kwargs["model"] == "text-embedding-3-small"
 
-    @patch("rag_core.embedder.openai")
+    @patch("rag_core.embedder.make_openai_client")
     @patch("rag_core.embedder.get_settings")
-    def test_uses_enriched_content(self, mock_settings, mock_openai):
+    def test_uses_enriched_content(self, mock_settings, mock_make_client):
         cfg = MagicMock()
-        cfg.openai.api_key = "sk-test"
         cfg.openai.embedding_model = "text-embedding-3-small"
         mock_settings.return_value = cfg
 
@@ -58,7 +56,7 @@ class TestEmbedChunks:
 
         mock_client = MagicMock()
         mock_client.embeddings.create.return_value = mock_response
-        mock_openai.OpenAI.return_value = mock_client
+        mock_make_client.return_value = mock_client
 
         chunk = Chunk(content="text", context="prefix")
         embed_chunks([chunk])
@@ -67,17 +65,16 @@ class TestEmbedChunks:
         texts = call_args.kwargs["input"]
         assert texts == ["prefix\n\ntext"]  # enriched_content
 
-    @patch("rag_core.embedder.openai")
+    @patch("rag_core.embedder.make_openai_client")
     @patch("rag_core.embedder.get_settings")
-    def test_raises_on_api_error(self, mock_settings, mock_openai):
+    def test_raises_on_api_error(self, mock_settings, mock_make_client):
         cfg = MagicMock()
-        cfg.openai.api_key = "sk-test"
         cfg.openai.embedding_model = "text-embedding-3-small"
         mock_settings.return_value = cfg
 
         mock_client = MagicMock()
         mock_client.embeddings.create.side_effect = Exception("API down")
-        mock_openai.OpenAI.return_value = mock_client
+        mock_make_client.return_value = mock_client
 
         with pytest.raises(Exception, match="API down"):
             embed_chunks([Chunk(content="test")])

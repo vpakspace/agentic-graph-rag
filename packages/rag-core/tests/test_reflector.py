@@ -63,24 +63,23 @@ class TestEvaluateRelevance:
         score = evaluate_relevance("q", results, openai_client=client)
         assert score == 2.5
 
+    @patch("rag_core.reflector.make_openai_client")
     @patch("rag_core.reflector.get_settings")
-    def test_creates_client_when_none(self, mock_settings):
+    def test_creates_client_when_none(self, mock_settings, mock_make_client):
         cfg = MagicMock()
-        cfg.openai.api_key = "sk-test"
         cfg.openai.llm_model = "gpt-4o-mini"
         mock_settings.return_value = cfg
 
-        with patch("openai.OpenAI") as mock_cls:
-            mock_client = MagicMock()
-            mock_client.chat.completions.create.return_value = _mock_openai_response(
-                "4, 5"
-            )
-            mock_cls.return_value = mock_client
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = _mock_openai_response(
+            "4, 5"
+        )
+        mock_make_client.return_value = mock_client
 
-            results = [_make_result(), _make_result()]
-            score = evaluate_relevance("q", results)
-            mock_cls.assert_called_once_with(api_key="sk-test")
-            assert score == 4.5
+        results = [_make_result(), _make_result()]
+        score = evaluate_relevance("q", results)
+        mock_make_client.assert_called_once_with(cfg)
+        assert score == 4.5
 
 
 class TestGenerateRetryQuery:
@@ -119,23 +118,22 @@ class TestGenerateRetryQuery:
         result = generate_retry_query("fallback", [], openai_client=client)
         assert result == "fallback"
 
+    @patch("rag_core.reflector.make_openai_client")
     @patch("rag_core.reflector.get_settings")
-    def test_creates_client_when_none(self, mock_settings):
+    def test_creates_client_when_none(self, mock_settings, mock_make_client):
         cfg = MagicMock()
-        cfg.openai.api_key = "sk-test"
         cfg.openai.llm_model = "gpt-4o-mini"
         mock_settings.return_value = cfg
 
-        with patch("openai.OpenAI") as mock_cls:
-            mock_client = MagicMock()
-            mock_client.chat.completions.create.return_value = _mock_openai_response(
-                "better query"
-            )
-            mock_cls.return_value = mock_client
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = _mock_openai_response(
+            "better query"
+        )
+        mock_make_client.return_value = mock_client
 
-            result = generate_retry_query("q", [])
-            mock_cls.assert_called_once_with(api_key="sk-test")
-            assert result == "better query"
+        result = generate_retry_query("q", [])
+        mock_make_client.assert_called_once_with(cfg)
+        assert result == "better query"
 
 
 class TestEvaluateCompleteness:
@@ -165,20 +163,19 @@ class TestEvaluateCompleteness:
         # Empty response doesn't start with YES → False
         assert evaluate_completeness("q", "answer", openai_client=client) is False
 
+    @patch("rag_core.reflector.make_openai_client")
     @patch("rag_core.reflector.get_settings")
-    def test_creates_client_when_none(self, mock_settings):
+    def test_creates_client_when_none(self, mock_settings, mock_make_client):
         cfg = MagicMock()
-        cfg.openai.api_key = "sk-test"
         cfg.openai.llm_model_mini = "gpt-4o-mini"
         mock_settings.return_value = cfg
 
-        with patch("openai.OpenAI") as mock_cls:
-            mock_client = MagicMock()
-            mock_client.chat.completions.create.return_value = _mock_openai_response(
-                "YES, complete"
-            )
-            mock_cls.return_value = mock_client
+        mock_client = MagicMock()
+        mock_client.chat.completions.create.return_value = _mock_openai_response(
+            "YES, complete"
+        )
+        mock_make_client.return_value = mock_client
 
-            result = evaluate_completeness("q", "answer")
-            mock_cls.assert_called_once_with(api_key="sk-test")
-            assert result is True
+        result = evaluate_completeness("q", "answer")
+        mock_make_client.assert_called_once_with(cfg)
+        assert result is True
