@@ -9,6 +9,7 @@ pydantic>=2.0.0
 pydantic-settings>=2.0.0
 docling>=2.0.0
 numpy>=1.26.0
+scipy>=1.11.0
 
 # New for Agentic Graph RAG
 networkx>=3.0
