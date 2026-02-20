@@ -85,7 +85,17 @@ def ingest_file(
     driver = GraphDatabase.driver(cfg.neo4j.uri, auth=(cfg.neo4j.user, cfg.neo4j.password))
     try:
         store = VectorStore(driver=driver)
-        store.init_index()
+        try:
+            store.init_index()
+        except Exception as exc:
+            if "ServiceUnavailable" in type(exc).__name__ or "Connection refused" in str(exc):
+                logger.error(
+                    "Cannot connect to Neo4j at %s. "
+                    "Is it running? Try: docker compose up -d",
+                    cfg.neo4j.uri,
+                )
+                sys.exit(1)
+            raise
         stored = store.store_chunks(chunks)
         logger.info("Stored %d chunks in Neo4j vector index", stored)
 
