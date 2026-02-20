@@ -145,8 +145,8 @@ agentic-graph-rag/
 ### Prerequisites
 
 - Python 3.12+
-- Docker (for Neo4j)
-- OpenAI API key
+- Docker — [Docker Desktop](https://www.docker.com/products/docker-desktop/) for Windows/Mac, or `docker-ce` for Linux ([install guide](https://docs.docker.com/engine/install/))
+- OpenAI API key ([get one here](https://platform.openai.com/api-keys))
 
 ### 1. Install
 
@@ -216,21 +216,25 @@ Or use the Streamlit UI Ingest tab (see below).
 
 ### 5. Run the System
 
-**API Server:**
+The simplest way to try it — run Streamlit standalone (no API server needed):
 
 ```bash
-PYTHONPATH=.:pymangle python run_api.py  # http://localhost:8507
-```
-
-**Streamlit UI:**
-
-```bash
-# With API backend (recommended):
-AGR_API_URL=http://localhost:8507 PYTHONPATH=.:pymangle streamlit run ui/streamlit_app.py --server.port 8506
-
-# Standalone (direct Python, no API needed):
 PYTHONPATH=.:pymangle streamlit run ui/streamlit_app.py --server.port 8506
 ```
+
+Open **http://localhost:8506** in your browser. You'll see 7 tabs: Ingest, Search & Q&A, Graph Explorer, Agent Trace, Benchmark, Reasoning, Settings.
+
+**Optional: API Server** (for programmatic access or MCP):
+
+```bash
+# Terminal 1: start API
+PYTHONPATH=.:pymangle python run_api.py  # http://localhost:8507
+
+# Terminal 2: start Streamlit with API backend
+AGR_API_URL=http://localhost:8507 PYTHONPATH=.:pymangle streamlit run ui/streamlit_app.py --server.port 8506
+```
+
+When `AGR_API_URL` is set, Streamlit routes queries through the API. Without it, Streamlit calls Python directly — both modes work identically.
 
 > **Why PYTHONPATH?** The project uses two source roots: the main project directory and
 > `pymangle/` (the Datalog engine). Setting `PYTHONPATH=.:pymangle` makes both importable.
