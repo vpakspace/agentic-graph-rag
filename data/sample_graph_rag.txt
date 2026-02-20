@@ -1,0 +1,27 @@
+Graph RAG: Combining Knowledge Graphs with Retrieval-Augmented Generation
+
+Graph RAG is an advanced information retrieval technique that enhances traditional RAG systems by incorporating knowledge graphs. While standard RAG relies on vector similarity search over document chunks, Graph RAG adds a structured layer of entities and relationships extracted from documents.
+
+## Core Components
+
+The system consists of several key components. A Document Loader processes input files (PDF, DOCX, TXT) and converts them to structured text. A Chunker splits the text into manageable pieces with semantic awareness. An Enricher adds contextual information to each chunk using a language model. An Embedder converts text chunks into vector representations for similarity search.
+
+## Skeleton Indexing
+
+KET-RAG, published at KDD 2025, introduced skeleton indexing. The technique builds a KNN graph from chunk embeddings, runs PageRank to identify the most important chunks, and performs full entity extraction only on the top-ranked "skeletal" chunks. Peripheral chunks are linked via keyword matching. This approach reduces LLM costs by up to 10x compared to extracting entities from every chunk.
+
+## Dual-Node Structure
+
+HippoRAG 2, presented at ICML 2025, proposed a dual-node graph structure. Phrase Nodes represent entities (people, organizations, concepts) while Passage Nodes store the original text chunks. MENTIONED_IN edges link entities to the passages where they appear. RELATED_TO edges capture semantic relationships between entities. This structure enables both precise entity lookup and contextual passage retrieval.
+
+## VectorCypher Retrieval
+
+VectorCypher combines vector similarity search with Cypher graph traversal. The system first finds relevant entry points using embedding similarity, then expands through the knowledge graph using multi-hop Cypher queries. Results are fused using Reciprocal Rank Fusion or cosine re-ranking. This approach handles complex multi-hop queries that pure vector search cannot answer.
+
+## Agentic Router
+
+The agentic router classifies incoming queries into types: simple, relation, multi-hop, global, and temporal. Based on the classification, it selects the appropriate retrieval tool. A self-correction loop evaluates result quality on a 1-5 scale and escalates to more powerful tools when results are insufficient. The escalation chain progresses from vector search through Cypher traversal to comprehensive full-document reads.
+
+## Applications
+
+Graph RAG is particularly useful for enterprise knowledge bases, scientific literature analysis, legal document review, and any domain where understanding relationships between entities is crucial. It excels at answering multi-hop questions that require connecting information across multiple documents and reasoning about entity relationships.

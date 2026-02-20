@@ -8,7 +8,7 @@ from pydantic_settings import BaseSettings
 class Neo4jSettings(BaseSettings):
     uri: str = "bolt://localhost:7687"
     user: str = "neo4j"
-    password: str = "temporal_kb_2026"
+    password: str = "neo4j"
 
     model_config = {"env_prefix": "NEO4J_"}
 

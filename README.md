@@ -129,6 +129,13 @@ agentic-graph-rag/
 │   ├── runner.py              # 6-mode benchmark runner
 │   └── compare.py             # Comparison table generator
 │
+├── scripts/
+│   └── ingest.py              # CLI ingestion: python scripts/ingest.py <file>
+│
+├── data/
+│   └── sample_graph_rag.txt   # Sample document for testing
+│
+├── docker-compose.yml         # Neo4j 5.x (docker compose up -d)
 ├── run_api.py                 # API launcher (uvicorn, port 8507)
 └── tests/                     # 454 unit tests (346 core + 108 pymangle)
 ```
@@ -138,26 +145,42 @@ agentic-graph-rag/
 ### Prerequisites
 
 - Python 3.12+
-- Neo4j 5.x (Docker recommended)
+- Docker (for Neo4j)
 - OpenAI API key
 
-### Installation
+### 1. Install
 
 ```bash
-# Clone
 git clone https://github.com/vpakspace/agentic-graph-rag.git
 cd agentic-graph-rag
 
-# Install
 pip install -e packages/rag-core --no-deps
 pip install -r requirements.txt
-
-# Configure
-cp .env.example .env
-# Edit .env with your OpenAI API key and Neo4j credentials
 ```
 
-### Start Neo4j
+> **Note on Docling**: The first time you load a PDF or DOCX document, Docling will download
+> its ML models (~1-2 GB). This is a one-time download. If you only plan to ingest `.txt` files,
+> no model download is needed.
+
+### 2. Configure
+
+```bash
+cp .env.example .env
+```
+
+Edit `.env` — at minimum set these two values:
+- `OPENAI_API_KEY` — your OpenAI API key
+- `NEO4J_PASSWORD` — password you want for the Neo4j database
+
+### 3. Start Neo4j
+
+Using Docker Compose (recommended):
+
+```bash
+docker compose up -d
+```
+
+Or manually:
 
 ```bash
 docker run -d \
@@ -167,19 +190,61 @@ docker run -d \
   neo4j:5
 ```
 
+### 4. Ingest a Document
+
+A sample document is included for testing:
+
+```bash
+PYTHONPATH=.:pymangle python scripts/ingest.py data/sample_graph_rag.txt
+```
+
+This runs the full pipeline: load → chunk → enrich → embed → store → skeleton indexing → dual-node graph.
+
+Options:
+- `--skip-enrichment` — skip LLM contextual enrichment (faster, fewer OpenAI calls)
+- `--skip-skeleton` — skip skeleton indexing (vector store only, no knowledge graph)
+- `--use-gpu` — enable GPU acceleration for Docling
+
+You can also ingest your own documents (PDF, DOCX, TXT):
+
+```bash
+PYTHONPATH=.:pymangle python scripts/ingest.py /path/to/your/document.pdf
+PYTHONPATH=.:pymangle python scripts/ingest.py /path/to/documents/  # entire directory
+```
+
+Or use the Streamlit UI Ingest tab (see below).
+
+### 5. Run the System
+
+**API Server:**
+
+```bash
+PYTHONPATH=.:pymangle python run_api.py  # http://localhost:8507
+```
+
+**Streamlit UI:**
+
+```bash
+# With API backend (recommended):
+AGR_API_URL=http://localhost:8507 PYTHONPATH=.:pymangle streamlit run ui/streamlit_app.py --server.port 8506
+
+# Standalone (direct Python, no API needed):
+PYTHONPATH=.:pymangle streamlit run ui/streamlit_app.py --server.port 8506
+```
+
+> **Why PYTHONPATH?** The project uses two source roots: the main project directory and
+> `pymangle/` (the Datalog engine). Setting `PYTHONPATH=.:pymangle` makes both importable.
+> Alternatively, you can `export PYTHONPATH=.:pymangle` in your shell profile.
+
 ### Run Tests
 
 ```bash
 PYTHONPATH=.:pymangle pytest tests/ pymangle/ -x -q  # 454 tests, ~4 seconds
 ```
 
-### Run API Server (v6)
+### API Endpoints
 
-```bash
-PYTHONPATH=.:pymangle python run_api.py  # http://localhost:8507
-```
-
-REST endpoints:
+REST (port 8507):
 - `POST /api/v1/query` — Query the pipeline (returns answer + trace)
 - `GET /api/v1/trace/{id}` — Retrieve a pipeline trace by ID
 - `GET /api/v1/health` — Health check (Neo4j connectivity)
@@ -189,16 +254,6 @@ MCP tools (SSE at `/mcp`):
 - `resolve_intent` — Classify query type and select tool
 - `search_graph` — Execute full pipeline search
 - `explain_trace` — Explain a pipeline trace
-
-### Run Streamlit UI
-
-```bash
-# With API backend (recommended):
-AGR_API_URL=http://localhost:8507 PYTHONPATH=.:pymangle streamlit run ui/streamlit_app.py --server.port 8506
-
-# Standalone (direct Python, no API needed):
-PYTHONPATH=.:pymangle streamlit run ui/streamlit_app.py --server.port 8506
-```
 
 ### Run Benchmark
 
