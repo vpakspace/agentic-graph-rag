@@ -18,7 +18,7 @@ class TestNeo4jSettings:
         s = Neo4jSettings()
         assert s.uri == "bolt://localhost:7687"
         assert s.user == "neo4j"
-        assert s.password == "temporal_kb_2026"
+        assert s.password == "neo4j"
 
     def test_env_override(self, monkeypatch):
         monkeypatch.setenv("NEO4J_URI", "bolt://custom:7688")
