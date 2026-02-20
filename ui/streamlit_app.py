@@ -57,7 +57,14 @@ API_URL = os.environ.get("AGR_API_URL", "http://localhost:8507")
 def _get_neo4j_driver():
     from neo4j import GraphDatabase
     cfg = get_settings()
-    return GraphDatabase.driver(cfg.neo4j.uri, auth=(cfg.neo4j.user, cfg.neo4j.password))
+    driver = GraphDatabase.driver(cfg.neo4j.uri, auth=(cfg.neo4j.user, cfg.neo4j.password))
+    try:
+        with driver.session() as session:
+            session.run("RETURN 1").single()
+    except Exception as exc:
+        st.error(f"Cannot connect to Neo4j at {cfg.neo4j.uri}. Run: docker-compose up -d")
+        raise SystemExit(1) from exc
+    return driver
 
 
 @st.cache_resource
@@ -276,7 +283,7 @@ with tab_search:
                 # Try API first (thin client)
                 resp = httpx.post(
                     f"{API_URL}/api/v1/query",
-                    json={"text": query, "mode": api_mode, "lang": lang},
+                    json={"text": query, "mode": api_mode},
                     timeout=120.0,
                 )
                 resp.raise_for_status()

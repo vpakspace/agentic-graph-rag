@@ -46,7 +46,6 @@ class PipelineService:
         self,
         text: str,
         mode: str = "agent_pattern",
-        lang: str = "ru",
     ) -> QAResult:
         """Full pipeline: route -> retrieve -> generate -> trace."""
         use_llm = mode == "agent_llm"
