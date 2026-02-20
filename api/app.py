@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import logging
 from contextlib import asynccontextmanager
 from pathlib import Path
 from typing import TYPE_CHECKING
@@ -13,6 +14,8 @@ from api.routes import router
 
 if TYPE_CHECKING:
     from agentic_graph_rag.service import PipelineService
+
+logger = logging.getLogger(__name__)
 
 
 def create_app(service: PipelineService | None = None) -> FastAPI:
@@ -37,8 +40,8 @@ def create_app(service: PipelineService | None = None) -> FastAPI:
                 from agentic_graph_rag.reasoning.reasoning_engine import ReasoningEngine
                 rules_dir = str(Path(__file__).resolve().parent.parent / "agentic_graph_rag" / "reasoning" / "rules")
                 reasoning = ReasoningEngine(rules_dir)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("ReasoningEngine init failed (Mangle routing disabled): %s", e)
 
             from agentic_graph_rag.service import PipelineService
             svc = PipelineService(driver, client, reasoning)
@@ -46,8 +49,8 @@ def create_app(service: PipelineService | None = None) -> FastAPI:
             try:
                 from api.mcp_server import mount_mcp
                 mount_mcp(app, svc)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("MCP server mount failed: %s", e)
             yield
             driver.close()
         else:
@@ -56,8 +59,8 @@ def create_app(service: PipelineService | None = None) -> FastAPI:
             try:
                 from api.mcp_server import mount_mcp
                 mount_mcp(app, service)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.warning("MCP server mount failed: %s", e)
             yield
 
     app = FastAPI(

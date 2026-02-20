@@ -155,8 +155,8 @@ class DoclingLoader:
                         "csv": df.to_csv(index=False),
                         "page": page_num,
                     })
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Table extraction skipped: %s", e)
         return tables
 
     @staticmethod
@@ -174,8 +174,8 @@ class DoclingLoader:
                             "caption": getattr(item, "caption", "") or "",
                             "page": page_num,
                         })
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.debug("Image extraction skipped: %s", e)
         return images
 
 
