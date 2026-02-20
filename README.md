@@ -239,7 +239,7 @@ PYTHONPATH=.:pymangle streamlit run ui/streamlit_app.py --server.port 8506
 ### Run Tests
 
 ```bash
-PYTHONPATH=.:pymangle pytest tests/ pymangle/ -x -q  # 454 tests, ~4 seconds
+PYTHONPATH=.:pymangle pytest tests/ packages/rag-core/tests/ pymangle/tests/ -x -q  # 562 tests, ~4 seconds
 ```
 
 ### API Endpoints
@@ -343,7 +343,7 @@ All settings via `.env` or environment variables:
 - **Graph Algorithms**: NetworkX (PageRank, KNN, PPR)
 - **API**: FastAPI (REST + MCP via FastMCP)
 - **UI**: Streamlit (7 tabs, httpx thin client)
-- **Testing**: pytest (454 tests) + ruff
+- **Testing**: pytest (562 tests) + ruff
 
 ## Streamlit UI Tabs
 

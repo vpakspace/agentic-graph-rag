@@ -24,9 +24,9 @@ docs/*.pdf
 docs/*.txt
 docs/plans/
 
-# Old/intermediate benchmark results
-benchmark/results_v3.json
-benchmark/results_v12_full.json
+# Old/intermediate benchmark results (keep only results.json + questions.json)
+benchmark/results_v*.json
+benchmark/results_q*.json
 
 # Windows artifacts
 *:Zone.Identifier

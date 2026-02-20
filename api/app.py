@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 from fastapi import FastAPI
@@ -34,7 +35,8 @@ def create_app(service: PipelineService | None = None) -> FastAPI:
             reasoning = None
             try:
                 from agentic_graph_rag.reasoning.reasoning_engine import ReasoningEngine
-                reasoning = ReasoningEngine()
+                rules_dir = str(Path(__file__).resolve().parent.parent / "agentic_graph_rag" / "reasoning" / "rules")
+                reasoning = ReasoningEngine(rules_dir)
             except Exception:
                 pass
 
