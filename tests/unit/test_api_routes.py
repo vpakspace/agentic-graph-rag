@@ -89,6 +89,24 @@ def test_get_trace_not_found(client, mock_service):
     assert resp.status_code == 404
 
 
+def test_search(client, mock_service):
+    from rag_core.models import Chunk, SearchResult
+
+    mock_service.search.return_value = [
+        SearchResult(chunk=Chunk(id="c1", content="text"), score=0.9, rank=1),
+    ]
+    resp = client.post("/api/v1/search", json={"text": "test", "tool": "vector_search"})
+    assert resp.status_code == 200
+    data = resp.json()
+    assert len(data) == 1
+    mock_service.search.assert_called_once_with("test", tool="vector_search")
+
+
+def test_search_invalid_tool(client):
+    resp = client.post("/api/v1/search", json={"text": "test", "tool": "bad_tool"})
+    assert resp.status_code == 422
+
+
 def test_graph_stats(client):
     resp = client.get("/api/v1/graph/stats")
     assert resp.status_code == 200

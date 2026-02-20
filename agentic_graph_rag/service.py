@@ -64,6 +64,23 @@ class PipelineService:
 
         return qa
 
+    def search(self, text: str, tool: str = "vector_search") -> list:
+        """Run a specific retrieval tool directly (no agent routing)."""
+        from agentic_graph_rag.agent import tools as t
+
+        tool_map = {
+            "vector_search": t.vector_search,
+            "cypher_traverse": t.cypher_traverse,
+            "hybrid_search": t.hybrid_search,
+            "comprehensive_search": t.comprehensive_search,
+            "temporal_query": t.temporal_query,
+            "full_document_read": t.full_document_read,
+        }
+        fn = tool_map.get(tool)
+        if fn is None:
+            raise ValueError(f"Unknown tool: {tool}")
+        return fn(text, self._driver, self._client)
+
     def get_trace(self, trace_id: str) -> PipelineTrace | None:
         """Retrieve trace from in-memory cache."""
         return self._trace_cache.get(trace_id)

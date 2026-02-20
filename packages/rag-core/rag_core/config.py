@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from functools import lru_cache
+
 from pydantic_settings import BaseSettings
 
 
@@ -64,8 +66,9 @@ class Settings(BaseSettings):
     model_config = {"env_file": ".env", "env_file_encoding": "utf-8", "extra": "ignore"}
 
 
+@lru_cache(maxsize=1)
 def get_settings() -> Settings:
-    """Create settings instance loading from environment."""
+    """Create and cache settings instance loading from environment."""
     return Settings()
 
 

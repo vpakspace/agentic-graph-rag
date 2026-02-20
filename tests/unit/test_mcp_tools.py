@@ -31,6 +31,31 @@ def test_resolve_intent_tool():
     assert result["trace"]["trace_id"] == "tr_mcp"
 
 
+def test_search_graph_dispatches_tool():
+    from api.mcp_server import create_mcp_tools
+
+    svc = MagicMock()
+    svc.search.return_value = [
+        SearchResult(chunk=Chunk(id="c1", content="found"), score=0.9, rank=1),
+    ]
+
+    tools = create_mcp_tools(svc)
+    result = tools["search_graph"]("test query", "cypher_traverse")
+    svc.search.assert_called_once_with("test query", tool="cypher_traverse")
+    assert len(result["results"]) == 1
+
+
+def test_search_graph_unknown_tool():
+    from api.mcp_server import create_mcp_tools
+
+    svc = MagicMock()
+    svc.search.side_effect = ValueError("Unknown tool: bad_tool")
+
+    tools = create_mcp_tools(svc)
+    result = tools["search_graph"]("test", "bad_tool")
+    assert "error" in result
+
+
 def test_explain_trace_tool():
     from api.mcp_server import create_mcp_tools
 

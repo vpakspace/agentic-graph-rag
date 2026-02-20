@@ -16,7 +16,7 @@ VALID_MODES = Literal[
     "agent_pattern", "agent_llm", "agent_mangle",
 ]
 VALID_TOOLS = Literal[
-    "vector_search", "cypher_traverse", "community_search",
+    "vector_search", "cypher_traverse",
     "hybrid_search", "temporal_query", "comprehensive_search",
     "full_document_read",
 ]
@@ -60,6 +60,13 @@ def get_trace(trace_id: str):
     if trace is None:
         raise HTTPException(status_code=404, detail="Trace not found")
     return trace.model_dump()
+
+
+@router.post("/search")
+def search(req: SearchRequest):
+    svc = get_service()
+    results = svc.search(req.text, tool=req.tool)
+    return [r.model_dump() for r in results]
 
 
 @router.get("/graph/stats")

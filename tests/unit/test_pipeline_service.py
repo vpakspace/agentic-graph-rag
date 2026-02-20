@@ -52,6 +52,34 @@ def test_service_health():
     assert health["status"] == "ok"
 
 
+def test_service_search_dispatches_tool():
+    from unittest.mock import patch as _patch
+
+    from rag_core.models import Chunk, SearchResult
+
+    from agentic_graph_rag.service import PipelineService
+
+    fake_result = [SearchResult(chunk=Chunk(id="c1", content="found"), score=0.9, rank=1)]
+
+    driver = MagicMock()
+    client = MagicMock()
+    svc = PipelineService(driver=driver, openai_client=client)
+    with _patch("agentic_graph_rag.agent.tools.vector_search", return_value=fake_result) as mock_vs:
+        results = svc.search("test query", tool="vector_search")
+        assert results == fake_result
+        mock_vs.assert_called_once_with("test query", driver, client)
+
+
+def test_service_search_unknown_tool():
+    import pytest as _pytest
+
+    from agentic_graph_rag.service import PipelineService
+
+    svc = PipelineService(driver=MagicMock(), openai_client=MagicMock())
+    with _pytest.raises(ValueError, match="Unknown tool"):
+        svc.search("test", tool="nonexistent_tool")
+
+
 def test_service_trace_cache_bounded():
     from agentic_graph_rag.service import PipelineService
 

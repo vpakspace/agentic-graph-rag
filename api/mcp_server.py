@@ -25,18 +25,13 @@ def create_mcp_tools(service: PipelineService) -> dict:
         return qa.model_dump()
 
     def search_graph(query: str, tool: str = "vector_search") -> dict:
-        """Search the knowledge graph without answer generation."""
-        valid_tools = (
-            "vector_search", "cypher_traverse", "hybrid_search",
-            "comprehensive_search", "temporal_query", "full_document_read",
-        )
-        if tool not in valid_tools:
-            return {"error": f"Unknown tool: {tool}"}
-
-        qa = service.query(query, mode="agent_pattern")
+        """Search the knowledge graph using a specific retrieval tool."""
+        try:
+            results = service.search(query, tool=tool)
+        except ValueError as e:
+            return {"error": str(e)}
         return {
-            "results": [r.model_dump() for r in qa.sources],
-            "trace": qa.trace.model_dump() if qa.trace else None,
+            "results": [r.model_dump() for r in results],
         }
 
     def explain_trace(trace_id: str) -> dict:
