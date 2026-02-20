@@ -220,9 +220,9 @@ API: [FastAPI](https://fastapi.tiangolo.com/) REST (`/api/v1/`) + [FastMCP](http
 
 | Метрика | Значение |
 |---------|----------|
-| Python LOC | 15,395 (111 файлов) |
-| Тесты | 454 (346 core + 108 PyMangle) |
-| Коммиты | 69 за 5 дней |
+| Python LOC | 15,623 (112 файлов) |
+| Тесты | 562 (299 core + 108 PyMangle + 155 rag-core) |
+| Коммиты | 82 за 7 дней |
 | Зависимости | 26 пакетов |
 | Итерации бенчмарка | 10 (v2 → v14) |
 | Файлы результатов | 15 JSON (~4.7 MB) |
@@ -236,7 +236,6 @@ API: [FastAPI](https://fastapi.tiangolo.com/) REST (`/api/v1/`) + [FastMCP](http
 - **[Personalized PageRank](https://en.wikipedia.org/wiki/Personalized_PageRank)** для query-focused графового обхода
 - **Human evaluation** в дополнение к LLM-as-judge
 - **Streaming ответы** в [Streamlit](https://streamlit.io/) UI
-- **[Docker Compose](https://docs.docker.com/compose/)** для one-click deployment
 - **Больше Mangle-правил** — temporal reasoning, conflict resolution
 
 ---
@@ -253,7 +252,7 @@ API: [FastAPI](https://fastapi.tiangolo.com/) REST (`/api/v1/`) + [FastMCP](http
 | Graph Algorithms | [NetworkX](https://networkx.org/) (PageRank, KNN, PPR) |
 | API | [FastAPI](https://fastapi.tiangolo.com/) (REST) + [FastMCP](https://github.com/jlowin/fastmcp) (SSE/MCP) |
 | UI | [Streamlit](https://streamlit.io/) (7 tabs) |
-| Testing | [pytest](https://docs.pytest.org/) (454 tests) + [ruff](https://github.com/astral-sh/ruff) |
+| Testing | [pytest](https://docs.pytest.org/) (562 tests) + [ruff](https://github.com/astral-sh/ruff) |
 | CI/CD | [GitHub Actions](https://github.com/features/actions) |
 
 ---

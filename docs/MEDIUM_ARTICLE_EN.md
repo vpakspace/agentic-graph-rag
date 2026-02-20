@@ -220,9 +220,9 @@ API: [FastAPI](https://fastapi.tiangolo.com/) REST (`/api/v1/`) + [FastMCP](http
 
 | Metric | Value |
 |--------|-------|
-| Python LOC | 15,395 (111 files) |
-| Tests | 454 (346 core + 108 PyMangle) |
-| Commits | 69 in 5 days |
+| Python LOC | 15,623 (112 files) |
+| Tests | 562 (299 core + 108 PyMangle + 155 rag-core) |
+| Commits | 82 in 7 days |
 | Dependencies | 26 packages |
 | Benchmark iterations | 10 (v2 → v14) |
 | Result files | 15 JSON (~4.7 MB) |
@@ -236,7 +236,6 @@ API: [FastAPI](https://fastapi.tiangolo.com/) REST (`/api/v1/`) + [FastMCP](http
 - **[Personalized PageRank](https://en.wikipedia.org/wiki/Personalized_PageRank)** for query-focused graph traversal
 - **Human evaluation** alongside LLM-as-judge
 - **Streaming responses** in the [Streamlit](https://streamlit.io/) UI
-- **[Docker Compose](https://docs.docker.com/compose/)** for one-click deployment
 - **More Mangle rules** — temporal reasoning, conflict resolution
 
 ---
@@ -253,7 +252,7 @@ API: [FastAPI](https://fastapi.tiangolo.com/) REST (`/api/v1/`) + [FastMCP](http
 | Graph Algorithms | [NetworkX](https://networkx.org/) (PageRank, KNN, PPR) |
 | API | [FastAPI](https://fastapi.tiangolo.com/) (REST) + [FastMCP](https://github.com/jlowin/fastmcp) (SSE/MCP) |
 | UI | [Streamlit](https://streamlit.io/) (7 tabs) |
-| Testing | [pytest](https://docs.pytest.org/) (454 tests) + [ruff](https://github.com/astral-sh/ruff) |
+| Testing | [pytest](https://docs.pytest.org/) (562 tests) + [ruff](https://github.com/astral-sh/ruff) |
 | CI/CD | [GitHub Actions](https://github.com/features/actions) |
 
 ---
