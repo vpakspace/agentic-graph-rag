@@ -363,3 +363,21 @@ def run_benchmark(
         )
 
     return all_results
+
+
+if __name__ == "__main__":
+    from neo4j import GraphDatabase
+    from rag_core.config import make_openai_client
+
+    logging.basicConfig(level=logging.INFO)
+    cfg = get_settings()
+    driver = GraphDatabase.driver(cfg.neo4j.uri, auth=(cfg.neo4j.user, cfg.neo4j.password))
+    client = make_openai_client(cfg)
+
+    results = run_benchmark(driver, client)
+
+    passed = sum(1 for mode in results.values() for r in mode if r["passed"])
+    total = sum(len(mode) for mode in results.values())
+    print(f"\nOverall: {passed}/{total} ({100 * passed / total:.1f}%)")
+
+    driver.close()
