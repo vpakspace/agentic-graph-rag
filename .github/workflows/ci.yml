@@ -25,13 +25,13 @@ jobs:
         run: |
           python -m pip install --upgrade pip
           pip install -e packages/rag-core --no-deps
-          pip install pydantic pydantic-settings networkx numpy openai scipy lark fastapi httpx uvicorn
+          pip install pydantic pydantic-settings networkx numpy openai lark fastapi httpx uvicorn python-dotenv
           pip install pytest pytest-asyncio ruff
 
       - name: Lint with ruff
         run: ruff check --target-version py312 .
 
       - name: Run tests
-        run: pytest tests/ packages/rag-core/tests/ -x -q
+        run: pytest tests/ packages/rag-core/tests/ pymangle/tests/ -x -q
         env:
           PYTHONPATH: .:pymangle
