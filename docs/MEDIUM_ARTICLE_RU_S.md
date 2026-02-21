@@ -220,9 +220,9 @@ API: FastAPI REST (`/api/v1/`) + MCP (FastMCP SSE) — и для REST-клиен
 
 | Метрика | Значение |
 |---------|----------|
-| Python LOC | 15,623 (112 файлов) |
-| Тесты | 562 (299 core + 108 PyMangle + 155 rag-core) |
-| Коммиты | 82 за 7 дней |
+| Python LOC | 16,206 (118 файлов) |
+| Тесты | 586 (320 core + 108 PyMangle + 158 rag-core) |
+| Коммиты | 85 за 8 дней |
 | Зависимости | 26 пакетов |
 | Итерации бенчмарка | 10 (v2 → v14) |
 | Файлы результатов | 15 JSON (~4.7 MB) |
@@ -252,7 +252,7 @@ API: FastAPI REST (`/api/v1/`) + MCP (FastMCP SSE) — и для REST-клиен
 | Graph Algorithms | NetworkX (PageRank, KNN, PPR) |
 | API | FastAPI (REST) + FastMCP (SSE/MCP) |
 | UI | Streamlit (7 tabs) |
-| Testing | pytest (562 tests) + ruff |
+| Testing | pytest (586 tests) + ruff |
 | CI/CD | GitHub Actions |
 
 ---

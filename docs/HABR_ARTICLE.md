@@ -220,9 +220,9 @@ API: [FastAPI](https://fastapi.tiangolo.com/) REST (`/api/v1/`) + [FastMCP](http
 
 | Метрика | Значение |
 |---------|----------|
-| Python LOC | 15,623 (112 файлов) |
-| Тесты | 562 (299 core + 108 PyMangle + 155 rag-core) |
-| Коммиты | 82 за 7 дней |
+| Python LOC | 16,206 (118 файлов) |
+| Тесты | 586 (320 core + 108 PyMangle + 158 rag-core) |
+| Коммиты | 85 за 8 дней |
 | Зависимости | 26 пакетов |
 | Итерации бенчмарка | 10 (v2 → v14) |
 | Файлы результатов | 15 JSON (~4.7 MB) |
@@ -252,7 +252,7 @@ API: [FastAPI](https://fastapi.tiangolo.com/) REST (`/api/v1/`) + [FastMCP](http
 | Graph Algorithms | [NetworkX](https://networkx.org/) (PageRank, KNN, PPR) |
 | API | [FastAPI](https://fastapi.tiangolo.com/) (REST) + [FastMCP](https://github.com/jlowin/fastmcp) (SSE/MCP) |
 | UI | [Streamlit](https://streamlit.io/) (7 tabs) |
-| Testing | [pytest](https://docs.pytest.org/) (562 tests) + [ruff](https://github.com/astral-sh/ruff) |
+| Testing | [pytest](https://docs.pytest.org/) (586 tests) + [ruff](https://github.com/astral-sh/ruff) |
 | CI/CD | [GitHub Actions](https://github.com/features/actions) |
 
 ---
