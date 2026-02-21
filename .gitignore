@@ -28,5 +28,11 @@ docs/plans/
 benchmark/results_v*.json
 benchmark/results_q*.json
 
+# Article drafts (published on Medium EN + Habr RU)
+docs/MEDIUM_ARTICLE_EN.md
+docs/MEDIUM_ARTICLE_RU.md
+docs/MEDIUM_ARTICLE_RU_S.md
+docs/HABR_ARTICLE.md
+
 # Windows artifacts
 *:Zone.Identifier
