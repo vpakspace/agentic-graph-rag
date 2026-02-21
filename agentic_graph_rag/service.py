@@ -6,12 +6,12 @@ All clients (FastAPI, MCP, Streamlit) use this service.
 from __future__ import annotations
 
 import logging
-from collections import OrderedDict
 from typing import TYPE_CHECKING
 
 from rag_core.models import PipelineTrace, QAResult
 
 from agentic_graph_rag.agent.retrieval_agent import run as agent_run
+from agentic_graph_rag.trace_store import TraceStore, create_trace_store
 
 if TYPE_CHECKING:
     from neo4j import Driver
@@ -21,7 +21,15 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-_TRACE_CACHE_MAX = 100
+# Canonical tool list — single source of truth for routes, MCP, and service.
+TOOL_NAMES: tuple[str, ...] = (
+    "vector_search",
+    "cypher_traverse",
+    "hybrid_search",
+    "comprehensive_search",
+    "temporal_query",
+    "full_document_read",
+)
 
 
 class PipelineService:
@@ -32,11 +40,12 @@ class PipelineService:
         driver: Driver,
         openai_client: OpenAI,
         reasoning: ReasoningEngine | None = None,
+        trace_store: TraceStore | None = None,
     ):
         self._driver = driver
         self._client = openai_client
         self._reasoning = reasoning
-        self._trace_cache: OrderedDict[str, PipelineTrace] = OrderedDict()
+        self._trace_store = trace_store or create_trace_store()
 
     # ------------------------------------------------------------------
     # Public API
@@ -68,22 +77,15 @@ class PipelineService:
         """Run a specific retrieval tool directly (no agent routing)."""
         from agentic_graph_rag.agent import tools as t
 
-        tool_map = {
-            "vector_search": t.vector_search,
-            "cypher_traverse": t.cypher_traverse,
-            "hybrid_search": t.hybrid_search,
-            "comprehensive_search": t.comprehensive_search,
-            "temporal_query": t.temporal_query,
-            "full_document_read": t.full_document_read,
-        }
+        tool_map = {name: getattr(t, name) for name in TOOL_NAMES}
         fn = tool_map.get(tool)
         if fn is None:
-            raise ValueError(f"Unknown tool: {tool}")
+            raise ValueError(f"Unknown tool: {tool}. Valid: {', '.join(TOOL_NAMES)}")
         return fn(text, self._driver, self._client)
 
     def get_trace(self, trace_id: str) -> PipelineTrace | None:
-        """Retrieve trace from in-memory cache."""
-        return self._trace_cache.get(trace_id)
+        """Retrieve trace from store."""
+        return self._trace_store.get(trace_id)
 
     def health(self) -> dict:
         """Neo4j connectivity check."""
@@ -113,7 +115,5 @@ class PipelineService:
     # ------------------------------------------------------------------
 
     def _cache_trace(self, trace: PipelineTrace) -> None:
-        """Add trace to bounded cache (LRU eviction)."""
-        self._trace_cache[trace.trace_id] = trace
-        while len(self._trace_cache) > _TRACE_CACHE_MAX:
-            self._trace_cache.popitem(last=False)
+        """Add trace to store."""
+        self._trace_store.put(trace)

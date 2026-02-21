@@ -2,6 +2,7 @@
 
 
 
+import pytest
 from rag_core.config import (
     AgentSettings,
     IndexingSettings,
@@ -10,6 +11,7 @@ from rag_core.config import (
     RetrievalSettings,
     Settings,
     get_settings,
+    make_openai_client,
 )
 
 
@@ -86,3 +88,23 @@ class TestSettings:
     def test_get_settings_returns_instance(self):
         s = get_settings()
         assert isinstance(s, Settings)
+
+
+class TestMakeOpenaiClient:
+    def test_raises_when_no_key_and_no_base_url(self):
+        cfg = Settings()
+        cfg.openai = OpenAISettings(api_key="", base_url="")
+        with pytest.raises(ValueError, match="OPENAI_API_KEY or OPENAI_BASE_URL"):
+            make_openai_client(cfg)
+
+    def test_works_with_api_key(self):
+        cfg = Settings()
+        cfg.openai = OpenAISettings(api_key="sk-test-key", base_url="")
+        client = make_openai_client(cfg)
+        assert client is not None
+
+    def test_works_with_base_url_only(self):
+        cfg = Settings()
+        cfg.openai = OpenAISettings(api_key="", base_url="http://localhost:4000/v1")
+        client = make_openai_client(cfg)
+        assert client is not None

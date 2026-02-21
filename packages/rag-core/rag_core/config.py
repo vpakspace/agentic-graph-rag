@@ -77,10 +77,17 @@ def make_openai_client(settings: Settings | None = None):
 
     If OPENAI_BASE_URL is set, uses it as base_url (e.g. LiteLLM proxy).
     If api_key is empty and base_url is set, uses "none" as placeholder.
+    Raises ValueError if neither api_key nor base_url is configured.
     """
     from openai import OpenAI
 
     cfg = settings or get_settings()
+    if not cfg.openai.api_key and not cfg.openai.base_url:
+        raise ValueError(
+            "OPENAI_API_KEY or OPENAI_BASE_URL must be set. "
+            "Set OPENAI_API_KEY for direct OpenAI access, or "
+            "OPENAI_BASE_URL for a LiteLLM proxy."
+        )
     kwargs: dict[str, str] = {}
     if cfg.openai.api_key:
         kwargs["api_key"] = cfg.openai.api_key

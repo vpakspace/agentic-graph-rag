@@ -461,8 +461,9 @@ with tab_trace:
             st.divider()
             st.subheader("Escalations")
             for esc in trace_data["escalation_steps"]:
+                dur = f" ({esc['duration_ms']}ms)" if esc.get("duration_ms") else ""
                 st.warning(
-                    f"**{esc['from_tool']}** → **{esc['to_tool']}**: {esc.get('reason', '')}"
+                    f"**{esc['from_tool']}** → **{esc['to_tool']}**: {esc.get('reason', '')}{dur}"
                 )
 
         # Generator step
@@ -470,7 +471,7 @@ with tab_trace:
             st.divider()
             st.subheader("Generator")
             gs = trace_data["generator_step"]
-            c1, c2, c3 = st.columns(3)
+            c1, c2, c3, c4 = st.columns(4)
             with c1:
                 st.metric("Model", gs.get("model", "—"))
             with c2:
@@ -478,14 +479,30 @@ with tab_trace:
                 st.metric("Tokens", tokens)
             with c3:
                 st.metric("Confidence", f"{gs.get('confidence', 0):.0%}")
+            with c4:
+                st.metric("Duration", f"{gs.get('duration_ms', 0)}ms")
 
-        # Summary
+        # Summary — latency breakdown
         st.divider()
-        c1, c2 = st.columns(2)
+        total_ms = trace_data.get("total_duration_ms", 0)
+        router_ms = trace_data.get("router_step", {}).get("duration_ms", 0) if trace_data.get("router_step") else 0
+        tool_ms = sum(s.get("duration_ms", 0) for s in trace_data.get("tool_steps", []))
+        gen_ms = trace_data.get("generator_step", {}).get("duration_ms", 0) if trace_data.get("generator_step") else 0
+        other_ms = max(0, total_ms - router_ms - tool_ms - gen_ms)
+
+        c1, c2, c3, c4, c5 = st.columns(5)
         with c1:
-            st.metric("Total Duration", f"{trace_data.get('total_duration_ms', 0)}ms")
+            st.metric("Total", f"{total_ms}ms")
         with c2:
-            st.metric("Trace ID", trace_data.get("trace_id", "—"))
+            st.metric("Router", f"{router_ms}ms")
+        with c3:
+            st.metric("Tools", f"{tool_ms}ms")
+        with c4:
+            st.metric("Generator", f"{gen_ms}ms")
+        with c5:
+            st.metric("Other", f"{other_ms}ms")
+
+        st.caption(f"Trace ID: {trace_data.get('trace_id', '—')}")
 
         # Raw JSON (expandable)
         with st.expander("Raw Trace JSON"):

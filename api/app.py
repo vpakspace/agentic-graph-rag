@@ -65,9 +65,17 @@ def create_app(service: PipelineService | None = None) -> FastAPI:
 
     app = FastAPI(
         title="Agentic Graph RAG API",
-        version="0.6.0",
+        version="0.7.0",
         description="Typed API contract with full pipeline provenance",
         lifespan=lifespan,
     )
+
+    # Middleware (order matters: outermost first)
+    from api.middleware import MetricsMiddleware, RateLimitMiddleware, RequestIDMiddleware
+
+    app.add_middleware(RequestIDMiddleware)
+    app.add_middleware(MetricsMiddleware)
+    app.add_middleware(RateLimitMiddleware, max_requests=60, window_seconds=60)
+
     app.include_router(router)
     return app

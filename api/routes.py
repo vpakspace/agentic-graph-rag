@@ -2,11 +2,12 @@
 
 from __future__ import annotations
 
-from typing import Literal
+from typing import Literal, get_args
 
 from fastapi import APIRouter, HTTPException
 from pydantic import BaseModel, Field
 
+from agentic_graph_rag.service import TOOL_NAMES
 from api.deps import get_service
 
 router = APIRouter(prefix="/api/v1")
@@ -20,6 +21,11 @@ VALID_TOOLS = Literal[
     "hybrid_search", "temporal_query", "comprehensive_search",
     "full_document_read",
 ]
+
+# Runtime guard: routes must stay in sync with the service tool list.
+assert set(get_args(VALID_TOOLS)) == set(TOOL_NAMES), (
+    f"VALID_TOOLS {set(get_args(VALID_TOOLS))} != TOOL_NAMES {set(TOOL_NAMES)}"
+)
 
 
 # ---------------------------------------------------------------------------
@@ -73,3 +79,9 @@ def search(req: SearchRequest):
 def graph_stats():
     svc = get_service()
     return svc.graph_stats()
+
+
+@router.get("/metrics")
+def metrics():
+    from api.middleware import get_metrics
+    return get_metrics().snapshot()

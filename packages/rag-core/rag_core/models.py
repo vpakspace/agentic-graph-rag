@@ -150,6 +150,7 @@ class EscalationStep(BaseModel):
     to_tool: str
     reason: str = ""
     rephrased_query: str = ""
+    duration_ms: int = 0
 
 
 class RouterStep(BaseModel):
@@ -169,6 +170,7 @@ class GeneratorStep(BaseModel):
     completion_tokens: int = 0
     confidence: float = 0.0
     completeness_check: bool | None = None
+    duration_ms: int = 0
 
 
 class PipelineTrace(BaseModel):
