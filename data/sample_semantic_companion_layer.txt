@@ -1,0 +1,119 @@
+The Semantic Companion Layer: A Governed Architecture for Meaning in Agentic AI Systems
+
+By Fanghua (Joshua) Yu, February 2026
+
+## The Problem of Unbounded Meaning
+
+Modern agentic AI systems face a fundamental challenge: unbounded meaning. When an AI agent interprets a user query, it produces predicates and entity references that have no stable contract. Different agents may interpret the same data differently, and there is no way to verify that an interpretation is correct, consistent, or governed. This lack of semantic governance creates risks in enterprise deployments: hallucinated relationships, inconsistent entity resolution, and untraceable reasoning chains. The Semantic Companion Layer (SCL) addresses these risks by introducing a governed middleware — called MeaningHub — that sits between AI agents and the underlying knowledge engines.
+
+## The Cognitive Contract
+
+At the heart of SCL lies the Cognitive Contract concept, which defines three core principles for responsible semantic integration:
+
+1. Stable Contract — every semantic operation must go through a typed, versioned interface that does not change when backends are swapped or upgraded. Agents depend on the contract, never on engine internals.
+
+2. Portable Semantics — domain knowledge must be expressed in declarative, engine-independent packs that can be shared, versioned, and audited without modifying the core schema. Meaning is portable across deployments.
+
+3. Governance by Default — every output must carry provenance: which packs were used, which rules fired, and a trace identifier that links the result back to the full reasoning chain. No result without an audit trail.
+
+These three principles ensure that meaning in AI systems is reproducible, explainable, and governed.
+
+## Evolution from RAG to Semantic Companion Layer
+
+The approach to semantic integration in AI systems has evolved through several stages. Early Retrieval-Augmented Generation (RAG) systems from 2023 simply retrieved document chunks via vector similarity and appended them to LLM prompts. In 2024, Graph RAG added structured knowledge graphs with entity extraction and relationship modeling, enabling multi-hop reasoning. Agentic RAG in late 2024 introduced tool-using agents that could choose between retrieval strategies and self-correct. However, all these approaches treated semantic operations as ad-hoc tool calls without contracts or governance. The Semantic Companion Layer, proposed in early 2026, formalizes the semantic pipeline into a governed architecture with typed interfaces, provenance tracking, and declarative domain configuration.
+
+## MeaningHub Architecture
+
+MeaningHub is the reference implementation of the Semantic Companion Layer. Its architecture follows a northbound-southbound pattern inspired by SDN (Software-Defined Networking) controller design.
+
+### Northbound Interface
+
+The northbound interface is the stable contract that agents and applications consume. MeaningHub exposes a dual northbound design that serves both traditional developers and AI agent runtimes:
+
+- GraphQL API — a typed schema with a primary `resolveIntent` query that accepts natural language or structured intent and returns a `ConstraintSet`. This interface serves traditional developers who want IDE autocompletion, schema validation, and Swagger-like documentation.
+
+- MCP (Model Context Protocol) — an agent-native interface that exposes the same semantic pipeline as MCP tools (`resolve_intent`, `search_graph`, `explain_trace`). AI agents can call these tools directly without constructing GraphQL queries.
+
+Both interfaces share the same underlying pipeline — they are two views of a single semantic core. The shared pipeline ensures consistent behavior regardless of which northbound interface a client uses.
+
+### Why GraphQL Instead of REST or gRPC
+
+GraphQL was chosen as the northbound contract for MeaningHub instead of REST or gRPC for several reasons. First, GraphQL provides a single endpoint with a typed schema that clients can introspect, enabling tooling and autocompletion. Second, the `resolveIntent` query naturally maps to a semantic operation that returns a complex nested structure (ConstraintSet with provenance), which GraphQL handles elegantly with its flexible response shape. Third, GraphQL subscriptions enable real-time streaming of pipeline progress. REST would require multiple endpoints and lacks native schema introspection. gRPC provides strong typing but requires code generation and is less accessible for web-based AI agent runtimes.
+
+### Southbound Adapters
+
+The southbound layer consists of adapters that connect MeaningHub to specific execution engines. Each adapter translates the internal semantic representation into engine-native queries:
+
+- SPARQL Adapter — connects to RDF triple stores (e.g., Apache Jena, Blazegraph) for ontology-based reasoning and OWL inference.
+
+- Cypher Adapter — connects to property graph databases (e.g., Neo4j) for relationship traversal, pattern matching, and graph algorithms.
+
+- Vector Adapter — connects to embedding stores (e.g., Qdrant, Pinecone, Neo4j Vector Index) for similarity search and semantic retrieval.
+
+The southbound adapters are the execution engines of MeaningHub. Agents never talk to these engines directly. The adapters are interchangeable — swapping Neo4j for Amazon Neptune requires only a new Cypher-compatible adapter, with no changes to the northbound contract. This is the multi-backend strategy: a facade pattern over SPARQL, Cypher, and vector search that unifies heterogeneous knowledge backends behind a single semantic interface.
+
+### Semantic Core Pipeline
+
+The semantic core is the processing pipeline inside MeaningHub that transforms a raw query into a governed output. It processes a query through six stages from intent to explanation:
+
+1. **Intent** — parse the incoming query to extract the user's semantic intent (entity types, relationships, constraints, temporal scope).
+
+2. **Link** — resolve entity references against the knowledge graph, linking mentions to canonical nodes via fuzzy matching and alias resolution.
+
+3. **Normalize** — standardize the linked entities and predicates into a canonical form, handling synonyms, abbreviations, and multilingual variants.
+
+4. **Infer** — apply domain rules from the active packs to derive implicit relationships, check constraints, and enrich the query with inferred knowledge.
+
+5. **Compile** — translate the enriched semantic representation into engine-specific queries (SPARQL, Cypher, vector search) and execute them through the southbound adapters.
+
+6. **Explain** — assemble the results with full provenance, including which packs were used, which rules fired, confidence scores, and the trace identifier.
+
+## ConstraintSet: The Output Contract
+
+Every MeaningHub operation returns a ConstraintSet — a structured output that carries both the semantic result and its provenance. The ConstraintSet includes:
+
+- `output` — the semantic result (entities, relationships, inferred facts, or natural language answer)
+- `packsUsed` — list of domain packs that were active during processing
+- `rulesFired` — list of inference rules that contributed to the result
+- `traceId` — unique identifier linking to the full pipeline trace for debugging and audit
+- `confidence` — aggregated confidence score from the pipeline stages
+- `engineSources` — which southbound engines contributed to the result (SPARQL, Cypher, vector)
+
+The ConstraintSet is the output contract of MeaningHub. It ensures that no semantic result is returned without provenance information, fulfilling the Governance by Default principle of the Cognitive Contract.
+
+## Portable Packs: Domain Customization Without Schema Changes
+
+Portable packs enable domain customization without changing the MeaningHub schema or code. A pack is a YAML file that bundles domain-specific configuration:
+
+- `allowlist` — entity types and predicates that are valid in this domain (e.g., a healthcare pack allows `Patient`, `Diagnosis`, `Treatment` but not `Invoice` or `Product`)
+- `keywords` — domain-specific vocabulary for intent parsing and entity linking (e.g., medical abbreviations, legal terms)
+- `rules` — inference rules expressed in a declarative format (e.g., "if a Patient has a Diagnosis and a Treatment, infer a ClinicalPathway relationship")
+- `mappings` — aliases and synonyms for entity normalization (e.g., "BP" → "Blood Pressure", "MI" → "Myocardial Infarction")
+
+Packs push variability to configuration rather than code. A healthcare deployment and a legal deployment share the same MeaningHub codebase but load different packs. This is the schema stability principle: the core schema is fixed, and all domain-specific behavior is expressed through packs. Packs are versioned, shareable, and auditable.
+
+## Strawberry Python and Documentation Integrity
+
+MeaningHub uses the Strawberry Python library for its GraphQL implementation. Strawberry follows a code-first approach: the GraphQL schema is defined as Python dataclasses with type annotations, and Strawberry generates the SDL (Schema Definition Language) file automatically. This ensures that the API documentation always matches the implementation — there is no hand-written SDL that can drift from reality.
+
+Documentation integrity is enforced via CI (Continuous Integration). On every commit, the CI pipeline runs `strawberry export-schema` to generate the current SDL and compares it against the committed SDL file. If they differ, the build fails. This mechanism guarantees that schema changes are intentional, reviewed, and documented.
+
+## Seven Architectural Decisions
+
+The Semantic Companion Layer design is founded on seven key architectural decisions:
+
+1. **Northbound contract** — use GraphQL as the stable typed interface between agents and the semantic core. Agents depend on the schema, not on engine internals.
+
+2. **Multi-backend strategy** — implement a facade pattern over SPARQL, Cypher, and vector search. The core pipeline is engine-agnostic; backends are pluggable adapters.
+
+3. **Output contract** — return a ConstraintSet with full provenance on every operation. No result without `packsUsed`, `rulesFired`, and `traceId`.
+
+4. **Dual northbound interfaces** — expose both GraphQL (for developers) and MCP (for AI agents). Both share the same pipeline and produce identical ConstraintSets.
+
+5. **Schema stability** — push all domain variability to portable packs (YAML configuration). The core schema never changes for domain-specific needs.
+
+6. **Implementation choice** — use Strawberry Python for code-first GraphQL. Schema is generated from code, not hand-maintained.
+
+7. **Documentation integrity** — generate SDL from code and enforce consistency via CI. The schema documentation is always in sync with the implementation.
+
+These seven decisions collectively define a governed, portable, and explainable architecture for semantic integration in agentic AI systems.

@@ -133,7 +133,8 @@ agentic-graph-rag/
 │   └── ingest.py              # CLI ingestion: python scripts/ingest.py <file>
 │
 ├── data/
-│   └── sample_graph_rag.txt   # Sample document for testing
+│   ├── sample_graph_rag.txt                # Doc1 (RU benchmark Q1-Q15): Graph RAG overview
+│   └── sample_semantic_companion_layer.txt # Doc2 (EN benchmark Q16-Q30): SCL / MeaningHub architecture
 │
 ├── docker-compose.yml         # Neo4j 5.x (docker compose up -d)
 ├── run_api.py                 # API launcher (uvicorn, port 8507)
@@ -192,10 +193,18 @@ docker run -d \
 
 ### 4. Ingest a Document
 
-A sample document is included for testing:
+Two sample documents are included for testing (both needed for the full 30-question benchmark):
 
 ```bash
-PYTHONPATH=.:pymangle python scripts/ingest.py data/sample_graph_rag.txt
+# Ingest both documents (required for benchmark reproducibility)
+PYTHONPATH=.:pymangle python scripts/ingest.py data/
+```
+
+Or ingest individually:
+
+```bash
+PYTHONPATH=.:pymangle python scripts/ingest.py data/sample_graph_rag.txt                # Doc1: Graph RAG (RU, Q1-Q15)
+PYTHONPATH=.:pymangle python scripts/ingest.py data/sample_semantic_companion_layer.txt # Doc2: SCL (EN, Q16-Q30)
 ```
 
 This runs the full pipeline: load → chunk → enrich → embed → store → skeleton indexing → dual-node graph.
@@ -243,7 +252,7 @@ When `AGR_API_URL` is set, Streamlit routes queries through the API. Without it,
 ### Run Tests
 
 ```bash
-PYTHONPATH=.:pymangle pytest tests/ packages/rag-core/tests/ pymangle/tests/ -x -q  # 562 tests, ~4 seconds
+PYTHONPATH=.:pymangle pytest tests/ packages/rag-core/tests/ pymangle/tests/ -x -q  # 586 tests, ~4 seconds
 ```
 
 ### API Endpoints
@@ -347,7 +356,7 @@ All settings via `.env` or environment variables:
 - **Graph Algorithms**: NetworkX (PageRank, KNN, PPR)
 - **API**: FastAPI (REST + MCP via FastMCP)
 - **UI**: Streamlit (7 tabs, httpx thin client)
-- **Testing**: pytest (562 tests) + ruff
+- **Testing**: pytest (586 tests) + ruff
 
 ## Streamlit UI Tabs
 
